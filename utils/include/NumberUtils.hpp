@@ -16,4 +16,18 @@ namespace NumberUtils {
 
         return true;
     }
+
+    template <typename T, typename T2>
+    bool getLowestElement(const T & listOfNumbers, T2 & out) {
+        if (listOfNumbers.empty()) {
+            return false;
+        }
+        out = listOfNumbers[0];
+
+        for (const T2 & listValue : listOfNumbers) {
+            out = std::max(out, listValue);
+        }
+
+        return true;
+    }
 };
