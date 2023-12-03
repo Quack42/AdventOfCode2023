@@ -220,6 +220,8 @@ void solve1(T & stream) {
 
 // For each game, find the minimum set of cubes that must have been present. What is the sum of the power of these sets?
 
+// The input for puzzle 2 is the same as for puzzle 1.
+
 
 const std::string & givenTestData_problem2 = givenTestData_problem1;
 
