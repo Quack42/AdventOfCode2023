@@ -236,14 +236,104 @@ int solve1(T & stream) {
     return puzzleResult;
 }
 
+// --- Part Two ---
+// The engineer finds the missing part and installs it in the engine!
+// As the engine springs to life, you jump in the closest gondola,
+//  finally ready to ascend to the water source.
+
+// You don't seem to be going very fast, though.
+// Maybe something is still wrong?
+// Fortunately, the gondola has a phone labeled "help",
+//  so you pick it up and the engineer answers.
+
+// Before you can explain the situation, she suggests that you look out the window.
+// There stands the engineer, holding a phone in one hand and waving with the other.
+// You're going so slowly that you haven't even left the station.
+// You exit the gondola.
+
+// The missing part wasn't the only issue - one of the gears in the engine is wrong.
+// A gear is any * symbol that is adjacent to exactly two part numbers.
+// Its gear ratio is the result of multiplying those two numbers together.
+
+// This time, you need to find the gear ratio of every gear and add them all up
+//  so that the engineer can figure out which gear needs to be replaced.
+
+// Consider the same engine schematic again:
+
+// 467..114..
+// ...*......
+// ..35..633.
+// ......#...
+// 617*......
+// .....+.58.
+// ..592.....
+// ......755.
+// ...$.*....
+// .664.598..
+
+// In this schematic, there are two gears.
+// The first is in the top left; it has part numbers 467 and 35, so its gear ratio is 16345.
+// The second gear is in the lower right; its gear ratio is 451490.
+// (The * adjacent to 617 is not a gear because it is only adjacent to one part number.)
+// Adding up all of the gear ratios produces 467835.
+
+// What is the sum of all of the gear ratios in your engine schematic?
+
+constexpr int expectedSolution_problem2 = 467835;
+const std::string & givenTestData_problem2 = givenTestData_problem1;
+
+template<typename T>
+int solve2(T & stream) {
+    // convert to lines
+    std::vector<std::string> lines;
+    for (std::string line; std::getline(stream, line);) {
+        lines.push_back(line);
+    }
+
+    // parse lines
+    std::vector<Number> numbers;
+    std::vector<Symbol> symbols;
+    for (unsigned int i=0; i < lines.size(); i++) {
+        const std::string & line = lines[i];
+        auto newNumbers = parseLineForNumbers(line, i);
+        numbers = VectorUtils::concatenate(numbers, newNumbers);
+        auto newSymbols = parseLineForSymbols(line, i);
+        symbols = VectorUtils::concatenate(symbols, newSymbols);
+    }
+
+    // Find gears, calculate their gear ratio and sum it. Might need a bigger datatype than int for this?
+    int puzzleResult = 0;
+    for (const Symbol & symbol : symbols) {
+        if (symbol.getSymbol() != '*') {
+            continue;
+        }
+
+        // find all adjacent numbers
+        std::vector<Number> numbersAdjacentToPotentialGear;
+        for (const Number & number : numbers) {
+            if (number.isAdjacent(symbol)) {
+                numbersAdjacentToPotentialGear.push_back(number);
+            }
+        }
+
+        // check if it's a gear
+        if (numbersAdjacentToPotentialGear.size() == 2) {
+            // It's a gear!
+            puzzleResult += (numbersAdjacentToPotentialGear[0].getNumberValue() * numbersAdjacentToPotentialGear[1].getNumberValue());
+        }
+    }
+
+    return puzzleResult;
+}
+
 
 int main(int argc, char ** argv) {
     std::stringstream inputStream;
     if (argc == 1) {
         std::stringstream strStream_problem1(givenTestData_problem1);
         const auto solve1_solution = solve1(strStream_problem1);
-        // std::stringstream strStream_problem2(givenTestData_problem2);
-        // const auto solve2_solution = solve2(strStream_problem2);
+        std::stringstream strStream_problem2(givenTestData_problem2);
+        const auto solve2_solution = solve2(strStream_problem2);
 
         if (solve1_solution == expectedSolution_problem1) {
             std::cout << "Puzzle A <Success!> :[" << solve1_solution << "]" << std::endl;
@@ -251,11 +341,11 @@ int main(int argc, char ** argv) {
             std::cout << "Puzzle A <MISMATCH> :[" << solve1_solution << "]" << std::endl;
         }
 
-        // if (solve2_solution == expectedSolution_problem2) {
-        //     std::cout << "Puzzle B <Success!> :[" << solve2_solution << "]" << std::endl;
-        // } else {
-        //     std::cout << "Puzzle B <MISMATCH> :[" << solve2_solution << "]" << std::endl;
-        // }
+        if (solve2_solution == expectedSolution_problem2) {
+            std::cout << "Puzzle B <Success!> :[" << solve2_solution << "]" << std::endl;
+        } else {
+            std::cout << "Puzzle B <MISMATCH> :[" << solve2_solution << "]" << std::endl;
+        }
     } else if (argc == 2 || argc == 3) {
         std::string url(argv[1]);
         std::cout << "Trying to input file:[" << url << "]" << std::endl;
@@ -272,8 +362,8 @@ int main(int argc, char ** argv) {
             auto solve1_solution = solve1(fileStream);
             std::cout << "Puzzle A result :[" << solve1_solution << "]" << std::endl;
         } else if(argc == 3 && argv[2][0] == 'B') {
-            // auto solve2_solution = solve2(fileStream);
-            // std::cout << "Puzzle B result :[" << solve2_solution << "]" << std::endl;
+            auto solve2_solution = solve2(fileStream);
+            std::cout << "Puzzle B result :[" << solve2_solution << "]" << std::endl;
         }
     }
 
