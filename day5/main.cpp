@@ -3,6 +3,7 @@
 #include "NumberUtils.hpp"
 #include "StringUtils.hpp"
 #include "VectorUtils.hpp"
+#include "RangeUtils.hpp"
 
 #include <cassert>
 #include <cctype>
@@ -209,27 +210,114 @@ using puzzleValueType = long long int;
 constexpr puzzleValueType expectedSolution_problem1 = 35;
 
 
+class ObjectRange {
+private:
+    std::string objectName;
+    RangeUtils::Range<puzzleValueType> range;
+    // puzzleValueType valueStart;     //inclusive
+    // puzzleValueType valueEnd;   //inclusive
+
+public:
+    ObjectRange(const std::string & objectName, puzzleValueType valueStart, puzzleValueType valueEnd) :
+        objectName(objectName),
+        range(valueStart, valueEnd)
+    {
+        //do nothing
+    }
+
+    ObjectRange(const std::string & objectName, const RangeUtils::Range<puzzleValueType> & range) :
+        objectName(objectName),
+        range(range)
+    {
+        //do nothing
+    }
+
+    std::string getObjectName() const {
+        return objectName;
+    }
+
+    puzzleValueType getValueStart() const {
+        return range.getStart();
+    }
+
+    puzzleValueType getValueEnd() const {
+        return range.getEnd();
+    }
+
+    RangeUtils::Range<puzzleValueType> getRange() const {
+        return range;
+    }
+};
+
 
 
 class ConversionRange {
 private:
-    puzzleValueType destination;
-    puzzleValueType source;
-    puzzleValueType range;
+    // puzzleValueType destination;
+    RangeUtils::Range<puzzleValueType> destinationRange;
+    RangeUtils::Range<puzzleValueType> sourceRange;
+    // puzzleValueType source;
+    // puzzleValueType range;
 public:
     ConversionRange(const std::string & line) {
         auto values = StringUtils::split(line, " ");
-        destination = std::stoll(values[0]);
-        source = std::stoll(values[1]);
-        range = std::stoll(values[2]);
+        auto destination = std::stoll(values[0]);
+        auto source = std::stoll(values[1]);
+        auto range = std::stoll(values[2]);
+        destinationRange = RangeUtils::Range<puzzleValueType>(destination, destination + range-1);  //-1 to convert to inclusive end
+        sourceRange = RangeUtils::Range<puzzleValueType>(source, source + range-1);  //-1 to convert to inclusive end
     }
 
     bool inRange(puzzleValueType sourceValue) const {
-        return (sourceValue >= source) && (sourceValue <= source + range);
+        return sourceRange.inRange(sourceValue);
     }
 
     puzzleValueType convert(puzzleValueType sourceValue) const {
-        return sourceValue + (destination-source);
+        return sourceValue + (destinationRange.getStart()-sourceRange.getStart());
+    }
+
+    puzzleValueType getStart() const {
+        return sourceRange.getStart();
+    }
+
+    puzzleValueType getEnd() const {
+        return sourceRange.getEnd();    //inclusive
+    }
+
+    RangeUtils::Range<puzzleValueType> getSourceRange() const {
+        return sourceRange;
+    }
+
+    void convert(const ObjectRange & objRange, const std::string & convertToObjectName, std::vector<ObjectRange> & convertedObjRanges, std::queue<ObjectRange> & unconvertedObjRanges) {
+        if (!RangeUtils::hasOverlap(objRange.getRange(), sourceRange)) {
+            // no overlap, nothing to process.
+            unconvertedObjRanges.push(objRange);
+            return;
+        }
+        //overlap exists; this needs processing
+        auto ranges = RangeUtils::split(objRange.getRange(), sourceRange);
+        for (auto & range : ranges) {
+            if (range.empty()) {
+                // no need to process empty ranges
+                continue;
+            }
+            if (RangeUtils::hasOverlap(range, sourceRange)) {
+                // fits in conversion range; so convert
+                
+                convertedObjRanges.push_back(
+                    ObjectRange(
+                        convertToObjectName,
+                        RangeUtils::shift(
+                            range,
+                            (destinationRange.getStart()-sourceRange.getStart())
+                        )
+                    )
+                );
+            } else {
+                // does not fit in conversion range, so don't convert
+                unconvertedObjRanges.push(ObjectRange(objRange.getObjectName(), range));
+            }
+        }
     }
 };
 
@@ -289,6 +377,38 @@ public:
         }
         // no conversion found; 1-to-1 conversion
         return Object(toObjectName, objectValue);
+    }
+
+    std::vector<ObjectRange> convert(ObjectRange & _objRange) {
+        assert(_objRange.getObjectName() == fromObjectName);
+
+        std::vector<ObjectRange> ret;
+        std::queue<ObjectRange> unconvertedObjRanges;
+        unconvertedObjRanges.push(_objRange);
+
+        for (auto conversion : conversions) {
+            std::queue<ObjectRange> nextUnconvertedObjRanges;
+            while (!unconvertedObjRanges.empty()) {
+                auto & objRange = unconvertedObjRanges.front();
+                unconvertedObjRanges.pop();
+                conversion.convert(objRange, toObjectName, ret, nextUnconvertedObjRanges);
+            }
+            unconvertedObjRanges = nextUnconvertedObjRanges;
+        }
+
+        while (!unconvertedObjRanges.empty()) {
+            auto & objRange = unconvertedObjRanges.front();
+            unconvertedObjRanges.pop();
+
+            ret.push_back(
+                ObjectRange(
+                    toObjectName,
+                    objRange.getRange()
+                )
+            );
+        }
+
+        return ret;
     }
 
     const std::string & getFromObjectName() const {
@@ -394,84 +514,82 @@ puzzleValueType solve2(T & stream) {
         lines.push_back(line);
     }
 
-    // // Collect information
-    // std::unordered_map<std::string, ConversionMap> conversionMaps;
-    // std::vector<Object> objects;
-    // std::string _lastConversionMapKey = "";
-    // bool collectingSeeds = false;
-    // puzzleValueType totalSeedNumberRange = 0;
-    // for (const auto & line : lines) {
-    //     if (StringUtils::contains(line, " map:")) {
-    //         // conversion map
-    //         ConversionMap map(line);
-    //         conversionMaps[map.getFromObjectName()] = map;
-    //         _lastConversionMapKey = map.getFromObjectName();
-    //     } else if (StringUtils::contains(line, "seeds:")) {
-    //         auto tempLine1 = StringUtils::remove(line, "seeds: ");
-    //         auto seedNumbers = StringUtils::split(tempLine1, " ");
-    //         // process in two's
-    //         assert((seedNumbers.size() & 1) == 0);  //is even
+    // Collect information
+    std::unordered_map<std::string, ConversionMap> conversionMaps;
+    std::vector<ObjectRange> objectRanges;
+    std::string _lastConversionMapKey = "";
+    bool collectingSeeds = false;
+    for (const auto & line : lines) {
+        if (StringUtils::contains(line, " map:")) {
+            // conversion map
+            ConversionMap map(line);
+            conversionMaps[map.getFromObjectName()] = map;
+            _lastConversionMapKey = map.getFromObjectName();
+        } else if (StringUtils::contains(line, "seeds:")) {
+            auto tempLine1 = StringUtils::remove(line, "seeds: ");
+            auto seedNumbers = StringUtils::split(tempLine1, " ");
+            // process in two's
+            assert((seedNumbers.size() & 1) == 0);  //is even
 
-    //         for (unsigned int i=0; i < seedNumbers.size(); i+=2) {
-    //             auto & seedNumberStartStr = seedNumbers[i];
-    //             auto & seedNumberRangeStr = seedNumbers[i+1];
-    //             puzzleValueType seedNumberStart = std::stoll(seedNumberStartStr);
-    //             puzzleValueType seedNumberRange = std::stoll(seedNumberRangeStr);
+            for (unsigned int i=0; i < seedNumbers.size(); i+=2) {
+                auto & seedNumberStartStr = seedNumbers[i];
+                auto & seedNumberRangeStr = seedNumbers[i+1];
+                // std::cout << "seedNumberStartStr:[" << seedNumberStartStr << "]" << std::endl;
+                // std::cout << "seedNumberRangeStr:[" << seedNumberRangeStr << "]" << std::endl;
+                puzzleValueType seedNumberStart = std::stoll(seedNumberStartStr);
+                puzzleValueType seedNumberRange = std::stoll(seedNumberRangeStr);
 
-    //             totalSeedNumberRange += seedNumberRange;
-    //             for(puzzleValueType i2=0; i2 < seedNumberRange; i2++) {
-    //                 objects.push_back(Object("seed", seedNumberStart+i2));
-    //             }
+                objectRanges.push_back(ObjectRange("seed", seedNumberStart, seedNumberStart+seedNumberRange-1));
+            }
+        } else if (!line.empty()) {
+            assert(!_lastConversionMapKey.empty());
+            conversionMaps[_lastConversionMapKey].addConversionRange(ConversionRange(line));
+        }
+    }
 
-    //         }
-    //     } else if (!line.empty()) {
-    //         assert(!_lastConversionMapKey.empty());
-    //         conversionMaps[_lastConversionMapKey].addConversionRange(ConversionRange(line));
-    //     }
-    // }
-    // std::cout << "totalSeedNumberRange:" << totalSeedNumberRange << std::endl;
+    assert(!conversionMaps.empty());
 
-    // for (puzzleValueType i=0; i < totalSeedNumberRange; i++) {
-    //     totalSeedNumberRange--;
-    // }
-    // std::cout << "totalSeedNumberRange:" << totalSeedNumberRange << std::endl;
+    // Process objects
+    std::vector<ObjectRange> finishedObjectRanges;    //for when no more steps can be done
+    std::string lastObjectName = "";
+    bool change = false;
+    do {
+        change = false;
+        std::vector<ObjectRange> newObjectRanges;
+        for (auto objectRange : objectRanges) {
+            // A print statement to keep me up to date and in the loop
+            if (objectRange.getObjectName() != lastObjectName) {
+                lastObjectName = objectRange.getObjectName();
+                std::cout << objectRange.getObjectName() << std::endl;
 
-    // assert(!conversionMaps.empty());
+                for (auto objectRange2 : objectRanges) {     //TODO: REMOVE THIS
+                    std::cout << "[" << objectRange2.getValueStart() << ", " << objectRange2.getValueEnd() << "]" << std::endl;     //TODO: REMOVE THIS
+                }     //TODO: REMOVE THIS
+            }
 
-    // // Process objects
-    // std::vector<Object> finishedObjects;    //for when no more steps can be done
-    // std::string lastObjectName = "";
-    // bool change = false;
-    // do {
-    //     change = false;
-    //     std::vector<Object> newObjects;
-    //     for (auto object : objects) {
-    //         if (object.getObjectName() != lastObjectName) {
-    //             lastObjectName = object.getObjectName();
-    //             std::cout << object.getObjectName() << std::endl;
-    //         }
-    //         if (conversionMaps.contains(object.getObjectName())) {
-    //             Object newObject = conversionMaps[object.getObjectName()].convert(object);
-    //             newObjects.push_back(newObject);
-    //             change = true;
-    //         } else {
-    //             finishedObjects.push_back(object);
-    //         }
-    //     }
-    //     objects = newObjects;
-    // } while (change);
+            // A print statement to keep me up to date and in the loop
+            if (conversionMaps.contains(objectRange.getObjectName())) {
+                auto justConvertedObjectRanges = conversionMaps[objectRange.getObjectName()].convert(objectRange);
+                newObjectRanges = VectorUtils::concatenate(newObjectRanges, justConvertedObjectRanges);
+                change = true;
+            } else {
+                finishedObjectRanges.push_back(objectRange);
+            }
+        }
+        objectRanges = newObjectRanges;
+    } while (change);
 
-    // assert(!finishedObjects.empty());
+    assert(!finishedObjectRanges.empty());
 
-    // // Get lowest value
-    // puzzleValueType puzzleValue = finishedObjects[0].getValue();
-    // for (auto object : finishedObjects) {
-    //     puzzleValue = std::min(puzzleValue, object.getValue());
-    // }
+    // Get lowest value
+    puzzleValueType puzzleValue = finishedObjectRanges[0].getValueStart();
+    for (auto finishedObjectRange : finishedObjectRanges) {
+        puzzleValue = std::min(puzzleValue, finishedObjectRange.getValueStart());
+    }
 
-    // return puzzleValue;
+    //TODO: continue here; conversion is wrong. First step, from seed to soil seems wrong already.
 
-    return 0;
+    return puzzleValue;
 }
 
 int main(int argc, char ** argv) {
