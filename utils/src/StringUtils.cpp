@@ -30,3 +30,7 @@ std::string StringUtils::remove(const std::string & inputString, const std::stri
 
     return ret;
 }
+
+bool StringUtils::contains(const std::string & inputString, const std::string & checkIfThisIsInInputString) {
+    return (inputString.find(checkIfThisIsInInputString) != std::string::npos);
+}
