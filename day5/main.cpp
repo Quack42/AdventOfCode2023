@@ -296,9 +296,20 @@ public:
         }
         //overlap exists; this needs processing
         auto ranges = RangeUtils::split(objRange.getRange(), sourceRange);
+        std::cout << "[" << objRange.getRange().getStart() << ", " << objRange.getRange().getEnd() << "] ";
+        std::cout << "split over ";
+        std::cout << "[" << sourceRange.getStart() << ", " << sourceRange.getEnd() << "]" << std::endl;
         for (auto & range : ranges) {
+            std::cout << "[" << range.getStart() << ", " << range.getEnd() << "]" << std::endl;
             if (range.empty()) {
                 // no need to process empty ranges
+                continue;
+            }
+            //only process if range is from original objRange
+            if (!RangeUtils::isSubSet(range, objRange.getRange())) {
+
+                std::cout << "not a subset of" << std::endl;
+                std::cout << "[" << objRange.getRange().getStart() << ", " << objRange.getRange().getEnd() << "]" << std::endl;
                 continue;
             }
             if (RangeUtils::hasOverlap(range, sourceRange)) {
@@ -318,6 +329,7 @@ public:
                 unconvertedObjRanges.push(ObjectRange(objRange.getObjectName(), range));
             }
         }
+        std::cout << "-" << std::endl;
     }
 };
 
