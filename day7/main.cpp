@@ -247,12 +247,169 @@ puzzleValueType solve1(T & stream) {
         rank++;
     }
 
-
     return puzzleValue;
 }
 
+// --- Part Two ---
+// To make things a little more interesting, the Elf introduces one additional rule.
+// Now, J cards are jokers - wildcards that can act like whatever card would make the hand the strongest type possible.
+
+// To balance this, J cards are now the weakest individual cards, weaker even than 2. 
+// The other cards stay in the same order: A, K, Q, T, 9, 8, 7, 6, 5, 4, 3, 2, J.
+
+// J cards can pretend to be whatever card is best for the purpose of determining hand type;
+// for example, QJJQ2 is now considered four of a kind.
+// However, for the purpose of breaking ties between two hands of the same type, J is always treated as J, not the card it's pretending to be:
+// JKKK2 is weaker than QQQQ2 because J is weaker than Q.
+
+// Now, the above example goes very differently:
+
+// 32T3K 765
+// T55J5 684
+// KK677 28
+// KTJJT 220
+// QQQJA 483
+// 32T3K is still the only one pair; it doesn't contain any jokers, so its strength doesn't increase.
+// KK677 is now the only two pair, making it the second-weakest hand.
+// T55J5, KTJJT, and QQQJA are now all four of a kind! T55J5 gets rank 3, QQQJA gets rank 4, and KTJJT gets rank 5.
+// With the new joker rule, the total winnings in this example are 5905.
+
+// Using the new joker rule, find the rank of every hand in your set. What are the new total winnings?
+
+// The input for puzzle 2 is the same as for puzzle 1.
+
 const std::string & givenTestData_problem2 = givenTestData_problem1;
-constexpr puzzleValueType expectedSolution_problem2 = -1;
+constexpr puzzleValueType expectedSolution_problem2 = 5905;
+
+
+const std::unordered_map<char, int> cardScoreConversionTable2 = { //A, K, Q, J, T, 9, 8, 7, 6, 5, 4, 3, or 2.
+    {'J', 0},
+    {'2', 1},
+    {'3', 2},
+    {'4', 3},
+    {'5', 4},
+    {'6', 5},
+    {'7', 6},
+    {'8', 7},
+    {'9', 8},
+    {'T', 9},
+    {'Q', 10},
+    {'K', 11},
+    {'A', 12},
+};
+
+class Hand2 {
+private:
+    HandType_e handType;
+    std::string cards;
+    puzzleValueType bid;
+
+public:
+    Hand2(const std::string & str){
+        auto strs = StringUtils::split(str, " ");
+        cards = strs[0];
+        bid = std::stoll(strs[1]);
+        handType = computeHandType(cards);
+        assert('A' > '9');
+    }
+
+    bool operator<(const Hand2 & rhs) const {
+        if (handType != rhs.handType) {
+            return handType < rhs.handType;
+        }
+        assert (cards.size() == rhs.cards.size());
+        for (unsigned int i=0; i < cards.size(); i++) {
+            if (cards[i] != rhs.cards[i]) {
+                return cardScoreConversionTable2.at(cards[i]) < cardScoreConversionTable2.at(rhs.cards[i]);
+            }
+        }
+        assert(false);  // equal; not sure what now.
+    }
+
+    puzzleValueType getBid() const {
+        return bid;
+    }
+
+    void print() const {
+        std::cout << "Hand" << std::endl;
+        std::cout << "cards:[" << cards << "]" << std::endl;
+        computeHandType(cards);
+        std::cout << "bid:[" << bid << "]" << std::endl;
+    }
+
+private:
+    static HandType_e _computeHandType(const std::string & cards) {
+        std::unordered_map<char, int> cardDivision;
+        for (const char & c : cards) {
+            cardDivision[c]++;
+        }
+
+        if (cardDivision.size()==1) {
+            std::cout << "handType:[" << "fiveOfAKind" << "]" << std::endl;
+            return HandType_e::fiveOfAKind;
+        }
+        if (cardDivision.size()==2) {
+            if ((cardDivision.begin()->second == 4) || (cardDivision.begin()->second == 1)) {
+                std::cout << "handType:[" << "fourOfAKind" << "]" << std::endl;
+                return HandType_e::fourOfAKind;
+            } else {
+                std::cout << "handType:[" << "fullHouse" << "]" << std::endl;
+                return HandType_e::fullHouse;
+            }
+        }
+        int highestCount = 0;
+        int pairCount = 0;
+        for (auto [card, cardCount] : cardDivision) {
+            highestCount = std::max(highestCount, cardCount);
+            if (cardCount == 2) {
+                pairCount++;
+            }
+        }
+        if (highestCount == 3) {
+            std::cout << "handType:[" << "threeOfAKind" << "]" << std::endl;
+            return HandType_e::threeOfAKind;
+        }
+        if (pairCount == 2) {
+            std::cout << "handType:[" << "twoPair" << "]" << std::endl;
+            return HandType_e::twoPair;
+        }
+        if (pairCount == 1) {
+            std::cout << "handType:[" << "onePair" << "]" << std::endl;
+            return HandType_e::onePair;
+        }
+
+        std::cout << "handType:[" << "highcard" << "]" << std::endl;
+        return HandType_e::highCard;
+    }
+
+    static HandType_e computeHandType(const std::string & cards) {
+        std::unordered_map<char, int> cardDivision;
+        cardDivision['J'] = 0;
+        std::set<char> uniqueCards;
+        for (const char & c : cards) {
+            cardDivision[c]++;
+            if (c != 'J') {
+                uniqueCards.insert(c);
+            }
+        }
+
+        if (cardDivision['J'] == 0) {
+            return _computeHandType(cards);
+        }
+
+        if (cardDivision['J'] == 5) {
+            return HandType_e::fiveOfAKind;
+        }
+
+        HandType_e highestHandType = HandType_e::highCard;
+        for (const char & uniqueCard : uniqueCards) {
+            std::string testString = StringUtils::replaceAllCharacters(cards, 'J', uniqueCard);
+            highestHandType = std::max(highestHandType, _computeHandType(testString));
+        }
+        return highestHandType;
+    }
+};
+
 
 template<typename T>
 puzzleValueType solve2(T & stream) {
@@ -262,8 +419,23 @@ puzzleValueType solve2(T & stream) {
         lines.push_back(line);
     }
 
-    puzzleValueType puzzleValue = 0;
+    // convert to hands; and put in ordered set
+    std::set<Hand2> hands;
+    for (auto & line : lines) {
+        Hand2 hand(line);
+        hands.insert(hand);
+    }
 
+    std::cout << "---" << std::endl;
+    // compute value
+    puzzleValueType puzzleValue = 0;
+    int rank = 1;
+    for (const auto & hand : hands) {
+        hand.print();
+        puzzleValue += hand.getBid() * rank;
+        std::cout << hand.getBid() << " * " << rank << std::endl;
+        rank++;
+    }
 
     return puzzleValue;
 }

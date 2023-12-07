@@ -34,3 +34,15 @@ std::string StringUtils::remove(const std::string & inputString, const std::stri
 bool StringUtils::contains(const std::string & inputString, const std::string & checkIfThisIsInInputString) {
     return (inputString.find(checkIfThisIsInInputString) != std::string::npos);
 }
+
+std::string StringUtils::replaceAllCharacters(const std::string & inputString, const char & characterToReplace, const char & characterToReplaceWith) {
+    std::string ret;
+    for (const auto & c : inputString) {
+        if (c == characterToReplace) {
+            ret += characterToReplaceWith;
+        } else {
+            ret += c;
+        }
+    }
+    return ret;
+}

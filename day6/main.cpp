@@ -190,6 +190,8 @@ puzzleValueType solve1(T & stream) {
 
 // How many ways can you beat the record in this one much longer race?
 
+// The input for puzzle 2 is the same as for puzzle 1.
+
 const std::string & givenTestData_problem2 = givenTestData_problem1;
 constexpr puzzleValueType expectedSolution_problem2 = 71503;
 
