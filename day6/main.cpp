@@ -245,8 +245,6 @@ puzzleValueType solve2(T & stream) {
     }
 
     return puzzleValue;
-
-    return 0;
 }
 
 int main(int argc, char ** argv) {
