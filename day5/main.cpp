@@ -232,7 +232,7 @@ public:
         //do nothing
     }
 
-    std::string getObjectName() const {
+    const std::string & getObjectName() const {
         return objectName;
     }
 
@@ -295,27 +295,20 @@ public:
             return;
         }
         //overlap exists; this needs processing
-        auto ranges = RangeUtils::split(objRange.getRange(), sourceRange);
-        std::cout << "[" << objRange.getRange().getStart() << ", " << objRange.getRange().getEnd() << "] ";
-        std::cout << "split over ";
-        std::cout << "[" << sourceRange.getStart() << ", " << sourceRange.getEnd() << "]" << std::endl;
+        auto ranges = RangeUtils::shatter(objRange.getRange(), sourceRange);
         for (auto & range : ranges) {
-            std::cout << "[" << range.getStart() << ", " << range.getEnd() << "]" << std::endl;
             if (range.empty()) {
                 // no need to process empty ranges
                 continue;
             }
             //only process if range is from original objRange
             if (!RangeUtils::isSubSet(range, objRange.getRange())) {
-
-                std::cout << "not a subset of" << std::endl;
-                std::cout << "[" << objRange.getRange().getStart() << ", " << objRange.getRange().getEnd() << "]" << std::endl;
                 continue;
             }
             if (RangeUtils::hasOverlap(range, sourceRange)) {
                 // fits in conversion range; so convert
                 
-                convertedObjRanges.push_back(
+                convertedObjRanges.emplace_back(
                     ObjectRange(
                         convertToObjectName,
                         RangeUtils::shift(
@@ -329,7 +322,6 @@ public:
                 unconvertedObjRanges.push(ObjectRange(objRange.getObjectName(), range));
             }
         }
-        std::cout << "-" << std::endl;
     }
 };
 
@@ -412,7 +404,7 @@ public:
             auto & objRange = unconvertedObjRanges.front();
             unconvertedObjRanges.pop();
 
-            ret.push_back(
+            ret.emplace_back(
                 ObjectRange(
                     toObjectName,
                     objRange.getRange()
@@ -460,7 +452,6 @@ puzzleValueType solve1(T & stream) {
     }
 
     assert(!conversionMaps.empty());
-    std::cout << "conversionMaps.size():" << conversionMaps.size() << std::endl;
 
     // Process objects
     std::vector<Object> finishedObjects;    //for when no more steps can be done
@@ -518,6 +509,8 @@ puzzleValueType solve1(T & stream) {
 const std::string & givenTestData_problem2 = givenTestData_problem1;
 constexpr puzzleValueType expectedSolution_problem2 = 46;
 
+const std::string seedString = "seed";
+
 template<typename T>
 puzzleValueType solve2(T & stream) {
     // convert to lines
@@ -546,12 +539,10 @@ puzzleValueType solve2(T & stream) {
             for (unsigned int i=0; i < seedNumbers.size(); i+=2) {
                 auto & seedNumberStartStr = seedNumbers[i];
                 auto & seedNumberRangeStr = seedNumbers[i+1];
-                // std::cout << "seedNumberStartStr:[" << seedNumberStartStr << "]" << std::endl;
-                // std::cout << "seedNumberRangeStr:[" << seedNumberRangeStr << "]" << std::endl;
                 puzzleValueType seedNumberStart = std::stoll(seedNumberStartStr);
                 puzzleValueType seedNumberRange = std::stoll(seedNumberRangeStr);
 
-                objectRanges.push_back(ObjectRange("seed", seedNumberStart, seedNumberStart+seedNumberRange-1));
+                objectRanges.emplace_back(ObjectRange(seedString, seedNumberStart, seedNumberStart+seedNumberRange-1));
             }
         } else if (!line.empty()) {
             assert(!_lastConversionMapKey.empty());
@@ -566,17 +557,18 @@ puzzleValueType solve2(T & stream) {
     std::string lastObjectName = "";
     bool change = false;
     do {
+        std::cout << objectRanges[0].getObjectName() << ": ";
+        for (auto objectRange : objectRanges) {
+            std::cout << objectRange.getRange().toString();
+        }
+        std::cout << std::endl;
+
         change = false;
         std::vector<ObjectRange> newObjectRanges;
         for (auto objectRange : objectRanges) {
             // A print statement to keep me up to date and in the loop
             if (objectRange.getObjectName() != lastObjectName) {
                 lastObjectName = objectRange.getObjectName();
-                std::cout << objectRange.getObjectName() << std::endl;
-
-                for (auto objectRange2 : objectRanges) {     //TODO: REMOVE THIS
-                    std::cout << "[" << objectRange2.getValueStart() << ", " << objectRange2.getValueEnd() << "]" << std::endl;     //TODO: REMOVE THIS
-                }     //TODO: REMOVE THIS
             }
 
             // A print statement to keep me up to date and in the loop
@@ -585,10 +577,12 @@ puzzleValueType solve2(T & stream) {
                 newObjectRanges = VectorUtils::concatenate(newObjectRanges, justConvertedObjectRanges);
                 change = true;
             } else {
-                finishedObjectRanges.push_back(objectRange);
+                finishedObjectRanges.emplace_back(objectRange);
             }
         }
-        objectRanges = newObjectRanges;
+        std::swap(objectRanges, newObjectRanges);
+
+        
     } while (change);
 
     assert(!finishedObjectRanges.empty());
