@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <queue>
 
 namespace VectorUtils {
 
@@ -37,6 +38,15 @@ namespace VectorUtils {
         std::set_intersection(lhs.begin(),lhs.end(),
                               rhs.begin(),rhs.end(),
                               back_inserter(ret));
+        return ret;
+    }
+
+    template<typename T>
+    std::queue<T> convertToQueue(const std::vector<T> & toQueue) {
+        std::queue<T> ret;
+        for (const auto & t : toQueue) {
+            ret.push(t);
+        }
         return ret;
     }
 };
