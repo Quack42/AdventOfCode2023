@@ -152,8 +152,19 @@ public:
         } else {
             Sequence differenceSequence = getDifferenceSequence();
             auto nextValueDifference = differenceSequence.predictNextValue();
-            auto nextValue = sequence[sequence.size()-1] + nextValueDifference;     // add to last
+            auto nextValue = sequence[sequence.size()-1] + nextValueDifference;
             return nextValue;
+        }
+    }
+
+    puzzleValueType predictPreviousValue() const {
+        if (isAllZeros()) {
+            return 0;
+        } else {
+            Sequence differenceSequence = getDifferenceSequence();
+            auto previousValueDifference = differenceSequence.predictPreviousValue();
+            auto previousValue = sequence[0] - previousValueDifference;
+            return previousValue;
         }
     }
 };
@@ -181,12 +192,34 @@ puzzleValueType solve1(T & stream) {
     return puzzleValue;
 }
 
+// --- Part Two ---
+// Of course, it would be nice to have even more history included in your report.
+// Surely it's safe to just extrapolate backwards as well, right?
 
+// For each history, repeat the process of finding differences until the sequence of differences is entirely zero.
+// Then, rather than adding a zero to the end and filling in the next values of each previous sequence,
+//  you should instead add a zero to the beginning of your sequence of zeroes,
+//  then fill in new first values for each previous sequence.
+
+// In particular, here is what the third example history looks like when extrapolating back in time:
+
+// 5  10  13  16  21  30  45
+//   5   3   3   5   9  15
+//    -2   0   2   4   6
+//       2   2   2   2
+//         0   0   0
+// Adding the new values on the left side of each sequence from bottom to top eventually reveals the new left-most history value: 5.
+
+// Doing this for the remaining example data above results in previous values of -3 for the first history and 0 for the second history.
+// Adding all three new values together produces 2.
+
+// Analyze your OASIS report again, this time extrapolating the previous value for each history.
+// What is the sum of these extrapolated values?
 
 // The input for puzzle 2 is the same as for puzzle 1.
 
-const std::string givenTestData_problem2 = "";
-constexpr puzzleValueType expectedSolution_problem2 = -1;
+const std::string & givenTestData_problem2 = givenTestData_problem1;
+constexpr puzzleValueType expectedSolution_problem2 = 2;
 
 
 
@@ -198,8 +231,17 @@ puzzleValueType solve2(T & stream) {
         lines.push_back(line);
     }
 
+    // convert to sequences
+    std::vector<Sequence> startingSequences;
+    for (const auto & line : lines) {
+        startingSequences.push_back(Sequence(line));
+    }
 
     puzzleValueType puzzleValue = 0;
+    // Compute puzzel value
+    for (const auto & sequence : startingSequences) {
+        puzzleValue += sequence.predictPreviousValue();
+    }
 
     return puzzleValue;
 }
