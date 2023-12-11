@@ -8,6 +8,15 @@ namespace CoordinateUtils {
         bool operator==(const ICoordinates &rhs) const {
             return x == rhs.x && y == rhs.y;
         }
+
+        bool operator!=(const ICoordinates &rhs) const {
+            return x != rhs.x || y != rhs.y;
+        }
+
+        ICoordinates operator+(const ICoordinates &rhs) const {
+            return {x + rhs.x, y + rhs.y};
+        }
+
     };
 
     bool isAdjacent(const ICoordinates & lhs, const ICoordinates & rhs) {
@@ -19,6 +28,10 @@ namespace CoordinateUtils {
             }
         }
         return false;
+    }
+
+    ICoordinates invert(const ICoordinates & rhs) {
+        return {-rhs.x, -rhs.y};
     }
 
 };
