@@ -4,6 +4,7 @@ namespace CoordinateUtils {
     struct ICoordinates {
         int x;
         int y;
+        // ICoordinates(int x, int y) : x(x), y(y) {}
 
         bool operator==(const ICoordinates &rhs) const {
             return x == rhs.x && y == rhs.y;
@@ -16,7 +17,6 @@ namespace CoordinateUtils {
         ICoordinates operator+(const ICoordinates &rhs) const {
             return {x + rhs.x, y + rhs.y};
         }
-
     };
 
     bool isAdjacent(const ICoordinates & lhs, const ICoordinates & rhs) {
