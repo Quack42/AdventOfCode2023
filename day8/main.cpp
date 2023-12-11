@@ -87,10 +87,13 @@ private:
 
 public:
     AvailableMove(const std::string & line) {
+        std::cout << "AvailableMove:[";
         for (const auto & c : line) {
             assert (c == 'L' || c == 'R');
             leftRightDirections.push_back( (c=='L')? Left : Right);
+            std::cout << c;
         }
+        std::cout << "]" << std::endl;
     }
 
     const std::vector<direction_e> & getLeftRightDirections() const {
@@ -102,7 +105,10 @@ class Node {
 private:
     std::string node;
     std::string left;
+    Node * leftNode = nullptr;
     std::string right;
+    Node * rightNode = nullptr;
+    bool finalNode;
 public:
     Node(const std::string & line) {
         std::string t1 = StringUtils::remove(line, "(");
@@ -124,12 +130,36 @@ public:
         return node;
     }
 
-    const std::string & getLeftNode() const {
+    const std::string & getLeftNodeString() const {
         return left;
     }
 
-    const std::string & getRightNode() const {
+    const std::string & getRightNodeString() const {
         return right;
+    }
+
+    Node * getLeftNode() const {
+        return leftNode;
+    }
+
+    Node * getRightNode() const {
+        return rightNode;
+    }
+
+    void setLeftNode(Node * leftNode) {
+        this->leftNode = leftNode;
+    }
+
+    void setRightNode(Node * rightNode) {
+        this->rightNode = rightNode;
+    }
+
+    void setFinalNode() {
+        this->finalNode = true;
+    }
+
+    bool isFinalNode() const {
+        return finalNode;
     }
 };
 
@@ -166,10 +196,10 @@ puzzleValueType solve1(T & stream) {
         // std::cout << "direction:[" << ((direction==Left)? "Left" : "Right") << "]" << std::endl;
 
         if (direction == Left) {
-            currentNode = nodes[currentNode]->getLeftNode();
+            currentNode = nodes[currentNode]->getLeftNodeString();
             moveCounter++;
         } else {    //direction == Right
-            currentNode = nodes[currentNode]->getRightNode();
+            currentNode = nodes[currentNode]->getRightNodeString();
             moveCounter++;
         }
         // std::cout << "currentNode:[" << currentNode << "]" << std::endl;
@@ -188,10 +218,63 @@ puzzleValueType solve1(T & stream) {
 }
 
 
+// --- Part Two ---
+// The sandstorm is upon you and you aren't any closer to escaping the wasteland.
+// You had the camel follow the instructions, but you've barely left your starting position.
+// It's going to take significantly more steps to escape!
 
-const std::string & givenTestData_problem2 = givenTestData_problem1;
-constexpr puzzleValueType expectedSolution_problem2 = -1;
+// What if the map isn't for people - what if the map is for ghosts?
+// Are ghosts even bound by the laws of spacetime?
+// Only one way to find out.
 
+// After examining the maps a bit longer,
+// your attention is drawn to a curious fact: the number of nodes with names ending in A is equal to the number ending in Z!
+// If you were a ghost, you'd probably just start at every node that ends with A and follow all of the paths at the same time until they all simultaneously end up at nodes that end with Z.
+
+// For example:
+
+// LR
+
+// 11A = (11B, XXX)
+// 11B = (XXX, 11Z)
+// 11Z = (11B, XXX)
+// 22A = (22B, XXX)
+// 22B = (22C, 22C)
+// 22C = (22Z, 22Z)
+// 22Z = (22B, 22B)
+// XXX = (XXX, XXX)
+// Here, there are two starting nodes, 11A and 22A (because they both end with A).
+// As you follow each left/right instruction, use that instruction to simultaneously navigate away from both nodes you're currently on.
+// Repeat this process until all of the nodes you're currently on end with Z.
+// (If only some of the nodes you're on end with Z, they act like any other node and you continue as normal.)
+
+// In this example, you would proceed as follows:
+
+// Step 0: You are at 11A and 22A.
+// Step 1: You choose all of the left paths, leading you to 11B and 22B.
+// Step 2: You choose all of the right paths, leading you to 11Z and 22C.
+// Step 3: You choose all of the left paths, leading you to 11B and 22Z.
+// Step 4: You choose all of the right paths, leading you to 11Z and 22B.
+// Step 5: You choose all of the left paths, leading you to 11B and 22C.
+// Step 6: You choose all of the right paths, leading you to 11Z and 22Z.
+// So, in this example, you end up entirely on nodes that end in Z after 6 steps.
+
+// Simultaneously start on every node that ends with A. How many steps does it take before you're only on nodes that end with Z?
+
+// The input for puzzle 2 is the same as for puzzle 1.
+
+const std::string givenTestData_problem2 = "\
+LR\n\
+\n\
+11A = (11B, XXX)\n\
+11B = (XXX, 11Z)\n\
+11Z = (11B, XXX)\n\
+22A = (22B, XXX)\n\
+22B = (22C, 22C)\n\
+22C = (22Z, 22Z)\n\
+22Z = (22B, 22B)\n\
+XXX = (XXX, XXX)\n";
+constexpr puzzleValueType expectedSolution_problem2 = 6;
 
 
 template<typename T>
@@ -202,11 +285,84 @@ puzzleValueType solve2(T & stream) {
         lines.push_back(line);
     }
 
-    puzzleValueType puzzleValue = 0;
+    // Parse to data types
+    std::cout << std::endl;
+    AvailableMove move(lines[0]);
+    std::unordered_map<std::string, Node*> nodesMap;
+    std::vector<Node*> nodesVector;
+    for (unsigned int i=2; i < lines.size(); i++) {
+        const std::string & line = lines[i];
+        if (!line.empty()) {
+            Node * node = new Node(line);
+            nodesMap[node->getNodeName()] = node;
+            nodesVector.push_back(node);
+        }
+    }
 
+    //post process nodes
+    std::cout << "Final nodes:[";
+    for (Node * node : nodesVector) {
+        node->setLeftNode(nodesMap.at(node->getLeftNodeString()));
+        node->setRightNode(nodesMap.at(node->getRightNodeString()));
 
+        if (node->getNodeName()[2] == 'Z') {
+            std::cout << node->getNodeName() << ", ";
+            node->setFinalNode();
+        }
+    }
+    std::cout << "]" << std::endl;
 
+    // Get starting nodes
+    std::vector<Node*> currentNodes;
+    std::cout << "Start nodes:[";
+    for (Node * node : nodesVector) {
+        if (node->getNodeName()[2] == 'A') {
+            std::cout << node->getNodeName() << ", ";
+            currentNodes.push_back(node);
+        }
+    }
+    std::cout << "]" << std::endl;
 
+    std::queue<direction_e> moveQueue = VectorUtils::convertToQueue(move.getLeftRightDirections());
+    assert(!moveQueue.empty());
+    puzzleValueType moveCounter = 0;
+    for(;;) {
+        if (moveQueue.empty()) {
+            moveQueue = VectorUtils::convertToQueue(move.getLeftRightDirections());
+        }
+        auto direction = moveQueue.front();
+        moveQueue.pop();
+
+        for (unsigned int i=0; i < currentNodes.size(); i++) {
+            if (direction == Left) {
+                currentNodes[i] = currentNodes[i]->getLeftNode();
+            } else {    //direction == Right
+                currentNodes[i] = currentNodes[i]->getRightNode();
+            }
+        }
+        moveCounter++;
+
+        bool success = true;
+        // std::cout << "Final nodes check:[";
+        for (Node * currentNode : currentNodes) {
+            // std::cout << currentNode->getNodeName() << ", ";
+            if (!currentNode->isFinalNode()){
+                success = false;
+            }
+        }
+        // std::cout << "] [" << success << "]" << std::endl;
+
+        if (success) {
+            break;
+        }
+    }
+
+    puzzleValueType puzzleValue = moveCounter;
+
+    for (Node * node : nodesVector) {
+        delete node;
+    }
+    nodesVector.clear();
     return puzzleValue;
 }
 
