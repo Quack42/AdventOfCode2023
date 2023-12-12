@@ -148,7 +148,9 @@ private:
     int x;
     int y;
 public:
-    Galaxy(const int & x, const int & y) : x(x), y(y) {}
+    Galaxy(const int & x, const int & y) : x(x), y(y) {
+        // std::cout << "Galaxy:[" << x << ", " << y << "]" << std::endl;
+    }
 
     int getX() const {
         return x;
@@ -260,11 +262,35 @@ puzzleValueType solve1(T & stream) {
     return puzzleValue;
 }
 
-const std::string givenTestData_problem2 = "";
 
-constexpr puzzleValueType expectedSolution_problem2 = -1;
+// --- Part Two ---
+// The galaxies are much older (and thus much farther apart) than the researcher initially estimated.
 
+// Now, instead of the expansion you did before,
+//  make each empty row or column one million times larger.
+// That is, each empty row should be replaced with 1000000 empty rows,
+//  and each empty column should be replaced with 1000000 empty columns.
 
+// (In the example above, if each empty row or column were merely 10 times larger,
+//  the sum of the shortest paths between every pair of galaxies would be 1030.
+// If each empty row or column were merely 100 times larger,
+//  the sum of the shortest paths between every pair of galaxies would be 8410.
+// However, your universe will need to expand far beyond these values.)
+
+// Starting with the same initial image, expand the universe according to these new rules,
+//  then find the length of the shortest path between every pair of galaxies. What is the sum of these lengths?
+
+const std::string & givenTestData_problem2 = givenTestData_problem1;
+
+// constexpr puzzleValueType expectedSolution_problem2 = 374;     // if 'expansionMultiplier' is 2
+// constexpr puzzleValueType expectedSolution_problem2 = 1030;     // if 'expansionMultiplier' is 10
+// constexpr puzzleValueType expectedSolution_problem2 = 8410;     // if 'expansionMultiplier' is 100
+constexpr puzzleValueType expectedSolution_problem2 = 82000210;     // if 'expansionMultiplier' is 1000000
+
+// constexpr int expansionMultiplier = 2;
+// constexpr int expansionMultiplier = 10;
+// constexpr int expansionMultiplier = 100;
+constexpr int expansionMultiplier = 1000000;
 
 template<typename T>
 puzzleValueType solve2(T & stream) {
@@ -274,7 +300,77 @@ puzzleValueType solve2(T & stream) {
         lines.push_back(line);
     }
 
+    // Convert lines to 2d array
+    std::vector<std::vector<char> > map;
+    for (const auto & line : lines) {
+        std::vector<char> lineVector;
+        for (const auto & c : line) {
+            lineVector.push_back(c);
+        }
+        map.push_back(lineVector);
+    }
+
+    // Identify columns to double
+    std::vector<int> multiplierAxisX;
+    int multiplierCountX = 0;
+    for (unsigned int x=0; x < map[0].size(); x++) {
+        bool hasGalaxy = false;
+        for (unsigned int y=0; y < map.size(); y++) {
+            if (map[y][x] == GALAXY) {
+                hasGalaxy = true;
+                break;
+            }
+        }
+        if (!hasGalaxy) {
+            multiplierCountX++;
+        }
+        multiplierAxisX.push_back(multiplierCountX);
+    }
+
+    std::cout << CoutUtils::convertToString("multiplierAxisX", multiplierAxisX) << std::endl;
+
+    // Identify rows to double
+    std::vector<int> multiplierAxisY;
+    int multiplierCountY = 0;
+    for (unsigned int y=0; y < map.size(); y++) {
+        bool hasGalaxy = false;
+        for (unsigned int x=0; x < map[0].size(); x++) {
+            if (map[y][x] == GALAXY) {
+                hasGalaxy = true;
+                break;
+            }
+        }
+        multiplierAxisY.push_back(multiplierCountY);
+        if (!hasGalaxy) {
+            multiplierCountY++;
+        }
+    }
+    std::cout << CoutUtils::convertToString("multiplierAxisY", multiplierAxisY) << std::endl;
+
+    // Find all galaxies
+    std::vector<Galaxy> galaxies;
+    for (unsigned int y=0; y < map.size(); y++) {
+        for (unsigned int x=0; x < map[0].size(); x++) {
+            if (map[y][x] == GALAXY) {
+                // std::cout << "Creating Galaxy[" << x << ", " << y << "]" << std::endl;
+                galaxies.emplace_back(
+                    x + multiplierAxisX[x] * (expansionMultiplier-1),
+                    y + multiplierAxisY[y] * (expansionMultiplier-1)
+                );
+            }
+        }
+    }
+
+    // Compute distances
     puzzleValueType puzzleValue = 0;
+    for (unsigned int iA=0; iA < galaxies.size(); iA++) {
+        const Galaxy & galaxyA = galaxies[iA];
+        for (unsigned int iB=iA+1; iB < galaxies.size(); iB++) {
+            const Galaxy & galaxyB = galaxies[iB];
+            puzzleValue += std::abs(galaxyA.getX() - galaxyB.getX());
+            puzzleValue += std::abs(galaxyA.getY() - galaxyB.getY());
+        }
+    }
 
     return puzzleValue;
 }
