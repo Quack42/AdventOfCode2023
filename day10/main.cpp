@@ -132,6 +132,7 @@ using puzzleValueType = long long int;
 // 23...
 
 // Find the single giant loop starting at S. How many steps along the loop does it take to get from the starting position to the point farthest from the starting position?
+
 const std::string givenTestData_problem1 = "\
 ..F7.\n\
 .FJ|.\n\
@@ -436,11 +437,13 @@ puzzleValueType solve1(T & stream) {
 // .....|FJLJ|FJ|F7|.LJ\n\
 // ....FJL-7.||.||||...\n\
 // ....L---J.LJ.LJLJ...\n";
+
 // const std::string givenTestData_problem2 = "\
 // ....\n\
 // .F7.\n\
 // .SJ.\n\
 // ....\n";
+
 const std::string givenTestData_problem2 = "\
 FF7FSF7F7F7F7F7F---7\n\
 L|LJ||||||||||||F--J\n\
