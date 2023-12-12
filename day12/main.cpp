@@ -152,18 +152,26 @@ private:
     std::string originalRow;
 
 public:
-    SpringRow(const std::string & line) {
+    SpringRow(const std::string & line, const int complexityMultiplier = 1) {
         auto sections = StringUtils::split(line, " ");
         // sequences
         auto sequenceStrings = StringUtils::split(sections[1], ",");
-        for (const auto & sequenceString : sequenceStrings) {
-            int sequenceLength = std::stoi(sequenceString);
-            if (sequenceLength > 0) {
-                sequences.push_back(sequenceLength);
+        for (unsigned int i=0; i < complexityMultiplier; i++) {
+            for (const auto & sequenceString : sequenceStrings) {
+                int sequenceLength = std::stoi(sequenceString);
+                if (sequenceLength > 0) {
+                    sequences.push_back(sequenceLength);
+                }
             }
         }
         // original row
-        originalRow = sections[0];
+        originalRow = "";
+        for (unsigned int i=0; i < complexityMultiplier; i++) {
+            if (i > 0) {
+                originalRow += "?";
+            }
+            originalRow += sections[0];
+        }
 
         //print to confirm
         std::cout << "originalRow:[" << originalRow << "]" << std::endl;
@@ -297,9 +305,9 @@ puzzleValueType solve1(T & stream) {
     return puzzleValue;
 }
 
-const std::string givenTestData_problem2 = "";
+const std::string & givenTestData_problem2 = givenTestData_problem1;
 
-constexpr puzzleValueType expectedSolution_problem2 = -1;
+constexpr puzzleValueType expectedSolution_problem2 = 525152;
 
 template<typename T>
 puzzleValueType solve2(T & stream) {
@@ -309,7 +317,29 @@ puzzleValueType solve2(T & stream) {
         lines.push_back(line);
     }
 
+    // Convert lines to spring rows
+    std::vector<SpringRow> springRows;
+    for (const auto & line : lines) {
+        springRows.emplace_back(line, 5);   //5: condition records list was folded
+    }
+
+    // SpringRow::validateSolution function validation.
+    // std::cout << "1st: " << SpringRow::validateSolution("#.#.###", {1,1,3}) << std::endl;   //1
+    // std::cout << "2nd: " << SpringRow::validateSolution("##.#.###", {1,1,3}) << std::endl;  //0
+    // std::cout << "3nd: " << SpringRow::validateSolution(".#.#.###", {1,1,3}) << std::endl;  //1
+    // std::cout << "4nd: " << SpringRow::validateSolution(".#.#.##.#", {1,1,3}) << std::endl; //0
+    // std::cout << "5nd: " << SpringRow::validateSolution(".#.###.#", {1,1,3}) << std::endl; //0
+    // std::cout << "6nd: " << SpringRow::validateSolution(".#.#.###.#", {1,1,3}) << std::endl; //0
+    // std::cout << "7nd: " << SpringRow::validateSolution(".#.#.###.#", {1,1,3,1}) << std::endl; //1
+
+    // Count solutions
     puzzleValueType puzzleValue = 0;
+    int counter = 0;
+    for (const auto & springRow : springRows) {
+        std::cout << "calculating [" << counter << "] out of [" << springRows.size() << "] - current number of arrangements:[" << puzzleValue << "]" << std::endl;
+        puzzleValue += springRow.countSolutions();
+        counter++;
+    }
 
     return puzzleValue;
 }
