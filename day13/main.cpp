@@ -177,16 +177,22 @@ public:
         std::cout << std::endl;
     }
 
-    bool findVerticalMirror(puzzleValueType & out) const {    //which mirrors horizontally
+    bool findVerticalMirror(puzzleValueType & out, unsigned int numberOfSmudges = 0) const {    //which mirrors horizontally
+        std::cout << "vertical" << std::endl;
+
         std::set<long int> possibleMirrorIndices;
 
         for (long int x=0; x < xorMapX[0].size(); x++) {
+            unsigned int differenceCount = 0;
             bool noDifference = true;
             for (long int y=0; y < xorMapX.size(); y++) {
                 if (xorMapX[y][x]) {
                     //difference found
-                    noDifference = false;
-                    break;
+                    differenceCount++;
+                    if (differenceCount > numberOfSmudges) {
+                        noDifference = false;
+                        break;
+                    }
                 }
             }
             if (noDifference) {
@@ -201,28 +207,33 @@ public:
         // Find mirror
         bool solutionFound = false;
         for (auto & possibleMirrorIndex : possibleMirrorIndices) {
+            PRINT(possibleMirrorIndex);
             bool isMirror = true;
-            for (long int x=0; x < xorMapX[0].size(); x++) {
+            unsigned int differenceCount = 0;
+            for (long int x=0; x < map[0].size(); x++) {
                 if (possibleMirrorIndex - x < 0) {
                     break;
                 }
-                if (possibleMirrorIndex + x >= xorMapX[0].size()) {
+                if (possibleMirrorIndex + x + 1 >= map[0].size()) {
                     break;
                 }
-                for (long int y=0; y < xorMapX.size(); y++) {
-                    bool leftSide = xorMapX[y][possibleMirrorIndex - x];
-                    bool rightSide = xorMapX[y][possibleMirrorIndex + x];
+                for (long int y=0; y < map.size(); y++) {
+                    const auto & leftSide = map[y][possibleMirrorIndex - x];
+                    const auto & rightSide = map[y][possibleMirrorIndex + 1 + x];
                     bool difference = leftSide != rightSide;
                     if (difference) {
-                        isMirror = false;
-                        break;
+                        differenceCount++;
+                        if (differenceCount > numberOfSmudges) {
+                            isMirror = false;
+                            break;
+                        }
                     }
                 }
                 if (!isMirror) {
                     break;
                 }
             }
-            if (isMirror) {
+            if (isMirror && differenceCount == numberOfSmudges) {
                 assert(!solutionFound);
                 solutionFound = true;
                 out = possibleMirrorIndex;
@@ -233,16 +244,21 @@ public:
         return solutionFound;
     }
 
-    bool findHorizontalMirror(puzzleValueType & out) const {    //which mirrors vertically
+    bool findHorizontalMirror(puzzleValueType & out, unsigned int numberOfSmudges = 0) const {    //which mirrors vertically
+        std::cout << "horizontal" << std::endl;
         std::set<long int> possibleMirrorIndices;
 
         for (long int y=0; y < xorMapY.size(); y++) {
+            unsigned int differenceCount = 0;
             bool noDifference = true;
             for (long int x=0; x < xorMapY[0].size(); x++) {
                 if (xorMapY[y][x]) {
                     //difference found
-                    noDifference = false;
-                    break;
+                    differenceCount++;
+                    if (differenceCount > numberOfSmudges) {
+                        noDifference = false;
+                        break;
+                    }
                 }
             }
             if (noDifference) {
@@ -257,43 +273,53 @@ public:
         // Find mirror
         bool solutionFound = false;
         for (auto & possibleMirrorIndex : possibleMirrorIndices) {
+            std::cout << std::endl;
+            PRINT(possibleMirrorIndex);
             bool isMirror = true;
-            for (long int y=0; y < xorMapY.size(); y++) {
+            unsigned int differenceCount = 0;
+            for (long int y=0; y < map.size(); y++) {
                 if (possibleMirrorIndex - y < 0) {
                     break;
                 }
-                if (possibleMirrorIndex + y >= xorMapY.size()) {
+                if (possibleMirrorIndex + y + 1 >= map.size()) {
                     break;
                 }
-                for (long int x=0; x < xorMapY[0].size(); x++) {
-                    bool upSide = xorMapY[possibleMirrorIndex - y][x];
-                    bool downSide = xorMapY[possibleMirrorIndex + y][x];
+                for (long int x=0; x < map[0].size(); x++) {
+                    const auto & upSide = map[possibleMirrorIndex - y][x];
+                    const auto & downSide = map[possibleMirrorIndex + 1 + y][x];
                     bool difference = upSide != downSide;
                     if (difference) {
-                        isMirror = false;
-                        break;
+                        differenceCount++;
+                        if (differenceCount > numberOfSmudges) {
+                            isMirror = false;
+                            break;
+                        }
                     }
                 }
                 if (!isMirror) {
                     break;
                 }
             }
-            if (isMirror) {
+            if (isMirror && differenceCount == numberOfSmudges) {
                 assert(!solutionFound);
                 solutionFound = true;
                 out = possibleMirrorIndex;
                 break;
+            } else {
+                std::cout << "is no mirror" << std::endl;
+                PRINT(isMirror);
+                PRINT(differenceCount);
             }
         }
         return solutionFound;
     }
 
     void print() const {
-        CoutUtils::print(map);
+        CoutUtils::print2d(map);
         std::cout << std::endl;
-        CoutUtils::print(xorMapX);
+        CoutUtils::print2d(xorMapX);
         std::cout << std::endl;
-        CoutUtils::print(xorMapY);
+        CoutUtils::print2d(xorMapY);
     }
 };
 
@@ -341,15 +367,99 @@ puzzleValueType solve1(T & stream) {
             mirrorCount++;
             puzzleValue += (index + 1) * horizontalMultiplier;
         }
+        if (mirrorCount != 1) {
+            std::cout << "mirrorCount:" << mirrorCount << std::endl;
+        }
         assert(mirrorCount == 1);
     }
 
     return puzzleValue;
 }
 
-const std::string givenTestData_problem2 = "";
+// --- Part Two ---
+// You resume walking through the valley of mirrors and - SMACK! - run directly into one.
+// Hopefully nobody was watching, because that must have been pretty embarrassing.
 
-constexpr puzzleValueType expectedSolution_problem2 = -1;
+// Upon closer inspection, you discover that every mirror has exactly one smudge:
+//  exactly one . or # should be the opposite type.
+
+// In each pattern, you'll need to locate and fix the smudge that causes a different reflection line to be valid.
+//  (The old reflection line won't necessarily continue being valid after the smudge is fixed.)
+
+// Here's the above example again:
+
+// #.##..##.
+// ..#.##.#.
+// ##......#
+// ##......#
+// ..#.##.#.
+// ..##..##.
+// #.#.##.#.
+
+// #...##..#
+// #....#..#
+// ..##..###
+// #####.##.
+// #####.##.
+// ..##..###
+// #....#..#
+
+// The first pattern's smudge is in the top-left corner.
+// If the top-left # were instead ., it would have a different, horizontal line of reflection:
+
+// 1 ..##..##. 1
+// 2 ..#.##.#. 2
+// 3v##......#v3
+// 4^##......#^4
+// 5 ..#.##.#. 5
+// 6 ..##..##. 6
+// 7 #.#.##.#. 7
+
+// With the smudge in the top-left corner repaired, a new horizontal line of reflection between rows 3 and 4 now exists.
+// Row 7 has no corresponding reflected row and can be ignored, but every other row matches exactly:
+// row 1 matches row 6,
+// row 2 matches row 5,
+// and row 3 matches row 4.
+
+// In the second pattern, the smudge can be fixed by changing the fifth symbol on row 2 from . to #:
+
+// 1v#...##..#v1
+// 2^#...##..#^2
+// 3 ..##..### 3
+// 4 #####.##. 4
+// 5 #####.##. 5
+// 6 ..##..### 6
+// 7 #....#..# 7
+
+// Now, the pattern has a different horizontal line of reflection between rows 1 and 2.
+
+// Summarize your notes as before, but instead use the new different reflection lines.
+// In this example, the first pattern's new horizontal line has 3 rows above it and the second pattern's new horizontal line has 1 row above it, summarizing to the value 400.
+
+// In each pattern, fix the smudge and find the different line of reflection.
+// What number do you get after summarizing the new reflection line in each pattern in your notes?
+
+// Although it hasn't changed, you can still get your puzzle input.
+
+
+const std::string givenTestData_problem2 = "\
+#.##..##.\n\
+..#.##.#.\n\
+##......#\n\
+##......#\n\
+..#.##.#.\n\
+..##..##.\n\
+#.#.##.#.\n\
+\n\
+#...##..#\n\
+#....#..#\n\
+..##..###\n\
+#####.##.\n\
+#####.##.\n\
+..##..###\n\
+#....#..#\n";
+
+constexpr puzzleValueType expectedSolution_problem2 = 400;
 
 template<typename T>
 puzzleValueType solve2(T & stream) {
@@ -359,7 +469,47 @@ puzzleValueType solve2(T & stream) {
         lines.push_back(line);
     }
 
+    std::vector<Pattern> patterns;
+    std::vector<std::vector<char> > map;
+    for (const auto & line : lines) {
+        if (line.empty()) {
+            if (!map.empty()) {
+                patterns.emplace_back(map);
+                map.clear();
+            }
+        } else {
+            std::vector<char> lineAsVector(line.begin(), line.end());
+            map.push_back(lineAsVector);
+        }
+    }
+
+    if (!map.empty()) {
+        patterns.emplace_back(map);
+        map.clear();
+    }
+
+    // Find mirror positions
     puzzleValueType puzzleValue = 0;
+    constexpr puzzleValueType horizontalMultiplier = 100;
+    for (const auto & pattern : patterns) {
+        std::cout << "-" << std::endl;
+        pattern.print();
+        puzzleValueType index = 0;
+        int mirrorCount = 0;
+        if (pattern.findVerticalMirror(index, 1)) {
+            mirrorCount++;
+            puzzleValue += (index + 1);
+        }
+
+        if (pattern.findHorizontalMirror(index, 1)) {
+            mirrorCount++;
+            puzzleValue += (index + 1) * horizontalMultiplier;
+        }
+        if (mirrorCount != 1) {
+            std::cout << "mirrorCount:" << mirrorCount << std::endl;
+        }
+        assert(mirrorCount == 1);
+    }
 
     return puzzleValue;
 }
@@ -367,8 +517,10 @@ puzzleValueType solve2(T & stream) {
 int main(int argc, char ** argv) {
     std::stringstream inputStream;
     if (argc == 1) {
+        std::cout << " --- PUZZLE A --- " << std::endl;
         std::stringstream strStream_problem1(givenTestData_problem1);
         const auto solve1_solution = solve1(strStream_problem1);
+        std::cout << " --- PUZZLE B --- " << std::endl;
         std::stringstream strStream_problem2(givenTestData_problem2);
         const auto solve2_solution = solve2(strStream_problem2);
 

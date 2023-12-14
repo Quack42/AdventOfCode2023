@@ -5,9 +5,13 @@
 #include <vector>
 #include <functional>
 
+#define STR(toString) #toString
+
+#define PRINT(variable) CoutUtils::print(std::string(STR(variable)), variable)
+
 namespace CoutUtils {
     template<typename T>
-    void print(const std::string & name, const std::vector<std::vector<T>> & twoDimensionalArray) {
+    void print2d(const std::string & name, const std::vector<std::vector<T>> & twoDimensionalArray) {
         if (!name.empty()){
             std::cout << name << std::endl;
         }
@@ -19,8 +23,8 @@ namespace CoutUtils {
         }
     }
     template<typename T>
-    void print(const std::vector<std::vector<T>> & twoDimensionalArray) {
-        print("", twoDimensionalArray);
+    void print2d(const std::vector<std::vector<T>> & twoDimensionalArray) {
+        print2d("", twoDimensionalArray);
     }
 
     std::string convertToString(const std::string & name, const std::vector<std::string> & input) {
@@ -62,7 +66,7 @@ namespace CoutUtils {
     }
 
     template<typename T>
-    void print(std::string name, T value) {
+    void print(const std::string & name, const T & value) {
         std::cout << name << ":[" << value << "]" << std::endl;
     }
 };
