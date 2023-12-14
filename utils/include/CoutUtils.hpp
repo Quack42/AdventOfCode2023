@@ -6,6 +6,23 @@
 #include <functional>
 
 namespace CoutUtils {
+    template<typename T>
+    void print(const std::string & name, const std::vector<std::vector<T>> & twoDimensionalArray) {
+        if (!name.empty()){
+            std::cout << name << std::endl;
+        }
+        for (const auto & line : twoDimensionalArray) {
+            for (const auto & c : line) {
+                std::cout << c;
+            }
+            std::cout << std::endl;
+        }
+    }
+    template<typename T>
+    void print(const std::vector<std::vector<T>> & twoDimensionalArray) {
+        print("", twoDimensionalArray);
+    }
+
     std::string convertToString(const std::string & name, const std::vector<std::string> & input) {
         std::string ret = name + ": [";
         for (unsigned int i=0; i < input.size(); i++) {
