@@ -342,6 +342,11 @@ public:
 
         //start at final node
         currentMove = moveCounter + *finalNodes.begin();
+        PRINT((moveCounter + *finalNodes.begin()) % nodes.size());
+        PRINT(moveCounter);
+        PRINT(nodes.size());
+        std::cout << std::endl;
+        // assert (moveCounter + *finalNodes.begin() == nodes.size());
         while (currentMove > getIncrementSize()) {
             currentMove -= getIncrementSize();
         }
@@ -365,10 +370,25 @@ public:
         currentMove += incrementValue;
     }
 
+    void decrementBy(puzzleValueType decrementValue) {
+        assert((decrementValue % nodes.size()) == 0);
+        // assert(currentMove > decrementValue);
+        // if (currentMove > decrementValue) {
+        currentMove -= decrementValue;
+        // }
+    }
+
+    void reduceBelow(puzzleValueType decrementBelowValue) {
+        unsigned int steps = (currentMove - decrementBelowValue) / getIncrementSize();    // cast to int to make sure currentMove doesn't surpass incrementToValue.
+        steps++;    //decrement one extra, to make sure the value remains below the decrementBelowValue
+        assert(currentMove >= steps * getIncrementSize());
+        currentMove -= steps * getIncrementSize();
+    }
+
     bool incrementToAtMost(puzzleValueType incrementToValue) {
         // increment in steps of the loop size (getIncrementSize()); at most equalling incrementToValue
         if (currentMove > incrementToValue) {
-            return false;
+            return incrementToValue == currentMove;
         }
         // assert(currentMove <= incrementToValue);
         unsigned int steps = (incrementToValue - currentMove) / getIncrementSize();    // cast to int to make sure currentMove doesn't surpass incrementToValue.
@@ -476,6 +496,9 @@ puzzleValueType solve2(T & stream) {
                 currentNodes[i] = currentNodes[i]->getLeftNode();
             } else {    //direction == Right
                 currentNodes[i] = currentNodes[i]->getRightNode();
+            }
+            if (currentNodes[i]->isFinalNode()) {
+                std::cout << "Final node [" << currentNodes[i]->getNodeName() << "] at [" << moveCounter << "]" << std::endl;
             }
             if (ghostsStuckInALoop.contains(i)) {
                 if (!loopHistory[i].isDone()) {
@@ -606,6 +629,10 @@ puzzleValueType solve2(T & stream) {
 
         assert(possiblySyncedLoops.size() <= 1);
 
+        if (loopsStillUnsynced.size() == 1) {
+            assert(possiblySyncedLoops.empty());
+        }
+
         // for (Loop * possiblySyncedLoop : possiblySyncedLoops) {
         if (loopsStillUnsynced.size() == 1 && possiblySyncedLoops.size() == 1) {
             break;
@@ -635,6 +662,31 @@ puzzleValueType solve2(T & stream) {
                 std::cout << "added synced loop:[" << syncedLoop->getCurrentPosition() << "]" << std::endl;
                 PRINT(incrementSize);
                 PRINT(loopsStillUnsynced.size());
+
+                // Reduce currentPositions to lowest possible value.
+                while (syncedLoop->getCurrentPosition() > incrementSize) {
+                    for (Loop * syncedLoopToIncrement : syncedLoops) {
+                        syncedLoopToIncrement->decrementBy(incrementSize);
+                    }
+                }
+
+                for (Loop * loop : loopsStillUnsynced) {
+                    loop->reduceBelow(syncedLoop->getCurrentPosition());
+                }
+
+                std::cout << "> continuing from: " << syncedLoop->getCurrentPosition() << std::endl;
+
+                std::cout << "> unsynced loops: " << std::endl;
+                for (Loop * loop : loopsStillUnsynced) {
+                    std::cout << " > > "<< loop->getCurrentPosition() << std::endl;
+                }
+
+                //reduce synced loops for an additional step, it will be added in the next cycle again anyway and we need to check for this value.
+                for (Loop * syncedLoopToIncrement : syncedLoops) {
+                    syncedLoopToIncrement->decrementBy(incrementSize);
+                }
+
+
             } else {
                 metaLoopHistory[syncedLoop][possiblySyncedLoop] = syncedLoop->getCurrentPosition();
                 metaLoopHistory[possiblySyncedLoop][syncedLoop] = syncedLoop->getCurrentPosition();
