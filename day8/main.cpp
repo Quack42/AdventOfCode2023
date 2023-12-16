@@ -108,7 +108,7 @@ private:
     Node * leftNode = nullptr;
     std::string right;
     Node * rightNode = nullptr;
-    bool finalNode;
+    bool finalNode = false;
 public:
     Node(const std::string & line) {
         std::string t1 = StringUtils::remove(line, "(");
@@ -276,6 +276,91 @@ LR\n\
 XXX = (XXX, XXX)\n";
 constexpr puzzleValueType expectedSolution_problem2 = 6;
 
+class Loop {
+private:
+    std::vector<Node*> nodes;
+    size_t initialStepIndex;    //index in the left-right instructions
+    puzzleValueType moveCounter;    //which move we're on when the loop started
+
+    bool done = false;
+
+    // -- tracking variables
+    puzzleValueType currentMove = 0;
+
+public:
+    Loop() {}
+    Loop(Node * firstNode, size_t initialStepIndex, puzzleValueType moveCounter)
+        : initialStepIndex(initialStepIndex),
+        moveCounter(moveCounter)
+    {
+        nodes.push_back(firstNode);
+    }
+
+    void addStep(Node * node, size_t stepIndex) {
+        if (done) {
+            return;
+        }
+        if (nodes[0] == node && stepIndex == initialStepIndex) {
+            // full cycle
+            done = true;
+        }
+        nodes.push_back(node);
+    }
+
+    bool isDone() const {
+        return done;
+    }
+
+    void print() const {
+        PRINT(moveCounter);
+        PRINT(nodes[0]->getNodeName());
+        PRINT(initialStepIndex);
+        PRINT(nodes.size());
+        for (size_t i=0; i < nodes.size(); i++) {
+            if (nodes[i]->isFinalNode()) {
+                std::cout << "final node at nodes index[" << i << "], name:[" << nodes[i]->getNodeName() << "]" << std::endl;
+            }
+        }
+
+        std::cout << "---" << std::endl;
+    }
+
+    // --- tracking functions
+    void calculateStartingPosition() {
+        std::set<size_t> finalNodes;
+        for (size_t i=0; i < nodes.size(); i++) {
+            if (nodes[i]->isFinalNode()) {
+                finalNodes.insert(i);
+                std::cout << "final node at nodes index[" << i << "], name:[" << nodes[i]->getNodeName() << "]" << std::endl;
+            }
+        }
+        assert(finalNodes.size() == 1);
+
+        //start at final node
+        currentMove = moveCounter + *finalNodes.begin();
+    }
+
+    void incrementCycle() {
+        currentMove += nodes.size();
+    }
+
+    const puzzleValueType & getCurrentPosition() const {
+        return currentMove;
+    }
+
+    bool operator<(const Loop & rhs) const {
+        if (currentMove != rhs.currentMove) {
+            return currentMove < rhs.currentMove;
+        }
+        return this < &rhs;
+    }
+    bool operator>(const Loop & rhs) const {
+        if (currentMove != rhs.currentMove) {
+            return currentMove > rhs.currentMove;
+        }
+        return this > &rhs;
+    }
+};
 
 template<typename T>
 puzzleValueType solve2(T & stream) {
@@ -324,9 +409,18 @@ puzzleValueType solve2(T & stream) {
     std::cout << "]" << std::endl;
 
     std::queue<direction_e> moveQueue = VectorUtils::convertToQueue(move.getLeftRightDirections());
+    std::unordered_map<size_t, std::unordered_map<size_t, std::set<Node*> > > history;
+    std::unordered_map<size_t, Loop> loopHistory;
+    std::set<size_t> ghostsStuckInALoop;
+    unsigned int loopsDone = 0;
+
+    puzzleValueType stepCounter = 0;
+    for (unsigned int i=0; i < currentNodes.size(); i++) {
+        history[i][moveQueue.size()].insert(currentNodes[i]);
+    }
     assert(!moveQueue.empty());
     puzzleValueType moveCounter = 0;
-    for(;;) {
+    while(loopsDone < currentNodes.size()) {
         if (moveQueue.empty()) {
             moveQueue = VectorUtils::convertToQueue(move.getLeftRightDirections());
         }
@@ -338,6 +432,22 @@ puzzleValueType solve2(T & stream) {
                 currentNodes[i] = currentNodes[i]->getLeftNode();
             } else {    //direction == Right
                 currentNodes[i] = currentNodes[i]->getRightNode();
+            }
+            if (ghostsStuckInALoop.contains(i)) {
+                if (!loopHistory[i].isDone()) {
+                    loopHistory[i].addStep(currentNodes[i], move.getLeftRightDirections().size() - moveQueue.size());
+                    if (loopHistory[i].isDone()) {
+                        loopsDone++;
+                    }
+                }
+            }
+            auto [_, inserted] = history[i][moveQueue.size()].insert(currentNodes[i]);
+            if (!inserted) {
+                if (!ghostsStuckInALoop.contains(i)) {
+                    std::cout << "ghost stuck in a loop:[" << i << "] at [" << currentNodes[i]->getNodeName() << "]" << std::endl;
+                    ghostsStuckInALoop.insert(i);
+                    loopHistory.emplace(i, Loop(currentNodes[i], move.getLeftRightDirections().size() - moveQueue.size(), moveCounter));
+                }
             }
         }
         moveCounter++;
@@ -357,7 +467,67 @@ puzzleValueType solve2(T & stream) {
         }
     }
 
-    puzzleValueType puzzleValue = moveCounter;
+
+    PRINT(loopHistory.size());
+
+    std::cout << "--" << std::endl;
+    for (const auto & [ghostIndex, loop] : loopHistory) {
+        loop.print();
+    }
+    std::cout << "0" << std::endl;
+
+    // Calculate the initial starting position per loop and put loops in sorting set.
+    std::set<Loop> sortedLoops;
+    for (auto & [ghostIndex, loop] : loopHistory) {
+        loop.calculateStartingPosition();
+        sortedLoops.insert(loop);
+    }
+    std::cout << "1" << std::endl;
+
+    assert(sortedLoops.size() == currentNodes.size());
+
+    // put sorted loops in array
+    Loop runningLoops[currentNodes.size()];
+    size_t counter = 0;
+    for (const Loop & loop : sortedLoops) {
+        runningLoops[counter] = loop;
+        counter++;
+    }
+    std::cout << "2" << std::endl;
+
+    // Play out scenario
+    constexpr puzzleValueType printBarrierStepSize = 1000000000;
+    puzzleValueType printBarrier = printBarrierStepSize;
+    while (runningLoops[0].getCurrentPosition() != runningLoops[sizeof(runningLoops)/sizeof(runningLoops[0])-1].getCurrentPosition()) {
+        // increment by cycle
+        // std::cout << "A" << std::endl;
+        runningLoops[0].incrementCycle();
+
+        // std::cout << "B" << std::endl;
+        //re-sort
+        for (unsigned int i=1; i < sizeof(runningLoops)/sizeof(runningLoops[0]); i++) {
+            // PRINT(i);
+            if (runningLoops[i-1] > runningLoops[i]) {
+                std::swap(runningLoops[i-1], runningLoops[i]);
+            }
+        }
+        // std::cout << "C" << std::endl;
+
+        if (runningLoops[0].getCurrentPosition() > printBarrier) {
+            printBarrier += printBarrierStepSize;
+            for (unsigned int i=0; i < sizeof(runningLoops)/sizeof(runningLoops[0]); i++) {
+                PRINT(runningLoops[i].getCurrentPosition());
+            }
+            std::cout << std::endl;
+        }
+    }
+
+
+    for (unsigned int i=0; i < sizeof(runningLoops)/sizeof(runningLoops[0]); i++) {
+        PRINT(runningLoops[i].getCurrentPosition());
+    }
+
+    puzzleValueType puzzleValue = runningLoops[0].getCurrentPosition();
 
     for (Node * node : nodesVector) {
         delete node;
