@@ -284,6 +284,8 @@ private:
 
     bool done = false;
 
+    Node * finalNode = nullptr;
+
     // -- tracking variables
     puzzleValueType currentMove = 0;
 
@@ -296,15 +298,15 @@ public:
         nodes.push_back(firstNode);
     }
 
-    void addStep(Node * node, size_t stepIndex) {
+    void addStep(Node * addedNode, size_t stepIndex) {
         if (done) {
             return;
         }
-        if (nodes[0] == node && stepIndex == initialStepIndex) {
+        if (nodes[0] == addedNode && stepIndex == initialStepIndex) {
             // full cycle
             done = true;
         }
-        nodes.push_back(node);
+        nodes.push_back(addedNode);
     }
 
     bool isDone() const {
@@ -336,12 +338,42 @@ public:
         }
         assert(finalNodes.size() == 1);
 
+        finalNode = nodes[*finalNodes.begin()];
+
         //start at final node
         currentMove = moveCounter + *finalNodes.begin();
+        while (currentMove > getIncrementSize()) {
+            currentMove -= getIncrementSize();
+        }
+    }
+
+    puzzleValueType getIncrementSize() const {
+        return nodes.size();
     }
 
     void incrementCycle() {
-        currentMove += nodes.size();
+        currentMove += getIncrementSize();
+    }
+
+    void incrementBy(puzzleValueType incrementValue) {
+        if ((incrementValue % nodes.size()) != 0) {
+            PRINT(incrementValue);
+            PRINT(nodes.size());
+            PRINT(((incrementValue % nodes.size()) != 0));
+        }
+        assert((incrementValue % nodes.size()) == 0);
+        currentMove += incrementValue;
+    }
+
+    bool incrementToAtMost(puzzleValueType incrementToValue) {
+        // increment in steps of the loop size (getIncrementSize()); at most equalling incrementToValue
+        if (currentMove > incrementToValue) {
+            return false;
+        }
+        // assert(currentMove <= incrementToValue);
+        unsigned int steps = (incrementToValue - currentMove) / getIncrementSize();    // cast to int to make sure currentMove doesn't surpass incrementToValue.
+        currentMove += steps * getIncrementSize();
+        return incrementToValue == currentMove;
     }
 
     const puzzleValueType & getCurrentPosition() const {
@@ -359,6 +391,18 @@ public:
             return currentMove > rhs.currentMove;
         }
         return this > &rhs;
+    }
+
+    std::string getFinalNodeName() const {
+        if (finalNode != nullptr) {
+            return finalNode->getNodeName();
+        }
+        return "";
+    }
+
+    std::string getNodeName(const puzzleValueType & move) const 
+    {
+        return nodes[(move - moveCounter) % nodes.size()]->getNodeName();
     }
 };
 
@@ -487,47 +531,183 @@ puzzleValueType solve2(T & stream) {
     assert(sortedLoops.size() == currentNodes.size());
 
     // put sorted loops in array
-    Loop runningLoops[currentNodes.size()];
+    Loop _runningLoops[currentNodes.size()];
+    Loop * runningLoops[currentNodes.size()];
     size_t counter = 0;
     for (const Loop & loop : sortedLoops) {
-        runningLoops[counter] = loop;
+        _runningLoops[counter] = loop;
+        runningLoops[counter] = &_runningLoops[counter];
         counter++;
     }
     std::cout << "2" << std::endl;
 
+
+    // Prep loop history
+    std::unordered_map<Loop*, std::unordered_map<Loop*, puzzleValueType> > metaLoopHistory;
+    for (unsigned int i=0; i < sizeof(runningLoops)/sizeof(runningLoops[0]); i++) {
+        for (unsigned int i2=0; i2 < sizeof(runningLoops)/sizeof(runningLoops[0]); i2++) {
+            metaLoopHistory[runningLoops[i]][runningLoops[i2]] = 0;
+        }
+    }
+
     // Play out scenario
     constexpr puzzleValueType printBarrierStepSize = 1000000000;
     puzzleValueType printBarrier = printBarrierStepSize;
-    while (runningLoops[0].getCurrentPosition() != runningLoops[sizeof(runningLoops)/sizeof(runningLoops[0])-1].getCurrentPosition()) {
-        // increment by cycle
-        // std::cout << "A" << std::endl;
-        runningLoops[0].incrementCycle();
-
-        // std::cout << "B" << std::endl;
-        //re-sort
-        for (unsigned int i=1; i < sizeof(runningLoops)/sizeof(runningLoops[0]); i++) {
-            // PRINT(i);
-            if (runningLoops[i-1] > runningLoops[i]) {
-                std::swap(runningLoops[i-1], runningLoops[i]);
-            }
-        }
-        // std::cout << "C" << std::endl;
-
-        if (runningLoops[0].getCurrentPosition() > printBarrier) {
-            printBarrier += printBarrierStepSize;
-            for (unsigned int i=0; i < sizeof(runningLoops)/sizeof(runningLoops[0]); i++) {
-                PRINT(runningLoops[i].getCurrentPosition());
-            }
-            std::cout << std::endl;
-        }
+    puzzleValueType incrementSize = 0;
+    // std::set<Loop*> loopsToIncrement;
+    std::set<Loop*> syncedLoops;
+    std::set<Loop*> loopsStillUnsynced;
+    for (unsigned int i=0; i < sizeof(runningLoops)/sizeof(runningLoops[0]); i++) {
+        loopsStillUnsynced.insert(runningLoops[i]);
     }
 
+    // Find lowest incrementsize loop and use it as initial synced loop.
+    Loop * syncedLoop = runningLoops[0];
+    for (unsigned int i=1; i < sizeof(runningLoops)/sizeof(runningLoops[0]); i++) {
+        if (runningLoops[i]->getIncrementSize() < syncedLoop->getIncrementSize()) {
+            syncedLoop = runningLoops[i];
+        }
+    }
 
     for (unsigned int i=0; i < sizeof(runningLoops)/sizeof(runningLoops[0]); i++) {
-        PRINT(runningLoops[i].getCurrentPosition());
+        PRINT(runningLoops[i]->getCurrentPosition());
     }
 
-    puzzleValueType puzzleValue = runningLoops[0].getCurrentPosition();
+    syncedLoops.insert(syncedLoop);
+    incrementSize = syncedLoop->getIncrementSize();
+    loopsStillUnsynced.erase(syncedLoop);
+
+    PRINT(syncedLoop->getFinalNodeName());
+
+    while (true) {
+    // while (runningLoops[0]->getCurrentPosition() != runningLoops[sizeof(runningLoops)/sizeof(runningLoops[0])-1]->getCurrentPosition()) {
+        // increment by cycle
+        // std::cout << "A" << std::endl;
+        // if (incrementSize != 0) {
+        for (Loop * syncedLoopToIncrement : syncedLoops) {
+            syncedLoopToIncrement->incrementBy(incrementSize);
+            assert (syncedLoopToIncrement->getCurrentPosition() == syncedLoop->getCurrentPosition());
+
+            if((syncedLoopToIncrement->getNodeName(syncedLoopToIncrement->getCurrentPosition())[2] != 'Z')) {
+                PRINT(syncedLoopToIncrement->getNodeName(syncedLoopToIncrement->getCurrentPosition()));
+                PRINT(syncedLoopToIncrement->getFinalNodeName());
+                PRINT(syncedLoop->getCurrentPosition());
+            }
+            assert(syncedLoopToIncrement->getNodeName(syncedLoop->getCurrentPosition())[2] == 'Z');
+        }
+
+        std::set<Loop*> possiblySyncedLoops;
+        for (Loop * unsyncedLoopToIncrement : loopsStillUnsynced) {
+            bool synced = unsyncedLoopToIncrement->incrementToAtMost(syncedLoop->getCurrentPosition());
+            if (synced) {
+                possiblySyncedLoops.insert(unsyncedLoopToIncrement);
+            }
+        }
+
+        assert(possiblySyncedLoops.size() <= 1);
+
+        // for (Loop * possiblySyncedLoop : possiblySyncedLoops) {
+        if (loopsStillUnsynced.size() == 1 && possiblySyncedLoops.size() == 1) {
+            break;
+        }
+        if (!possiblySyncedLoops.empty())
+        {
+            Loop * possiblySyncedLoop = *possiblySyncedLoops.begin();
+            assert (possiblySyncedLoop->getCurrentPosition() == syncedLoop->getCurrentPosition());
+            assert (possiblySyncedLoop!= syncedLoop);
+
+            if (metaLoopHistory[syncedLoop][possiblySyncedLoop] > 0) {
+                //got a sync
+                puzzleValueType incrementForNewSync = syncedLoop->getCurrentPosition() - metaLoopHistory[syncedLoop][possiblySyncedLoop];
+                assert ((incrementForNewSync % incrementSize) == 0);    //assert the new increment size is a plural of the previous increment size.
+                incrementSize = incrementForNewSync;
+
+                // clear history, it's no longer usable in my naive solution, and needs to be re-established
+                for (unsigned int i=0; i < sizeof(runningLoops)/sizeof(runningLoops[0]); i++) {
+                    for (unsigned int i2=0; i2 < sizeof(runningLoops)/sizeof(runningLoops[0]); i2++) {
+                        metaLoopHistory[runningLoops[i]][runningLoops[i2]] = 0;
+                    }
+                }
+
+                // possiblySyncedLoop is now definitely synced.
+                loopsStillUnsynced.erase(possiblySyncedLoop);
+                syncedLoops.insert(possiblySyncedLoop);
+                std::cout << "added synced loop:[" << syncedLoop->getCurrentPosition() << "]" << std::endl;
+                PRINT(incrementSize);
+                PRINT(loopsStillUnsynced.size());
+            } else {
+                metaLoopHistory[syncedLoop][possiblySyncedLoop] = syncedLoop->getCurrentPosition();
+                metaLoopHistory[possiblySyncedLoop][syncedLoop] = syncedLoop->getCurrentPosition();
+            }
+        }
+
+        if (loopsStillUnsynced.empty()) {
+            break;
+        }
+
+
+
+        // } else {
+        //     runningLoops[0]->incrementCycle();
+        // }
+
+        // // std::cout << "B" << std::endl;
+        // //re-sort
+        // for (unsigned int i=1; i < sizeof(runningLoops)/sizeof(runningLoops[0]); i++) {
+        //     // PRINT(i);
+        //     if (*runningLoops[i-1] > *runningLoops[i]) {
+        //         // Swap
+        //         // std::swap(runningLoops[i-1], runningLoops[i]);
+        //         Loop * t = runningLoops[i-1];
+        //         runningLoops[i-1] = runningLoops[i];
+        //         runningLoops[i] = t;
+        //     }
+        // }
+
+        // // if (incrementSize != 0) {
+        // for (unsigned int i=1; i < sizeof(runningLoops)/sizeof(runningLoops[0]); i++) {
+        //     Loop * loopA = runningLoops[i-1];
+        //     Loop * loopB = runningLoops[i];
+        //     if (loopA->getCurrentPosition() == loopB->getCurrentPosition()) {
+        //         if (incrementSize > 0) {
+        //         } else {
+        //             if (metaLoopHistory[loopA][loopB] > 0) {
+        //                 //get initial larger step size.
+        //                 if (loopA->getCurrentPosition() != metaLoopHistory[loopA][loopB]) {
+        //                     incrementSize = loopA->getCurrentPosition() - metaLoopHistory[loopA][loopB];
+        //                     PRINT(incrementSize);
+        //                     PRINT(loopA->getCurrentPosition());
+        //                     PRINT(metaLoopHistory[loopA][loopB]);
+
+        //                     syncedLoops.insert(loopA);
+        //                     syncedLoops.insert(loopB);
+        //                     loopsStillUnsynced.erase(loopA);
+        //                     loopsStillUnsynced.erase(loopB);
+        //                     // assert(false);
+        //                 }
+        //             } else {
+        //                 metaLoopHistory[loopA][loopB] = loopA->getCurrentPosition();
+        //                 metaLoopHistory[loopB][loopA] = loopA->getCurrentPosition();
+        //             }
+        //         }
+        //     }
+        // }
+        // // std::cout << "C" << std::endl;
+
+        // if (runningLoops[0]->getCurrentPosition() > printBarrier) {
+        //     printBarrier += printBarrierStepSize;
+        //     for (unsigned int i=0; i < sizeof(runningLoops)/sizeof(runningLoops[0]); i++) {
+        //         PRINT(runningLoops[i]->getCurrentPosition());
+        //     }
+        //     std::cout << std::endl;
+        // }
+    }
+
+    for (unsigned int i=0; i < sizeof(runningLoops)/sizeof(runningLoops[0]); i++) {
+        PRINT(runningLoops[i]->getCurrentPosition());
+    }
+
+    puzzleValueType puzzleValue = runningLoops[0]->getCurrentPosition();
 
     for (Node * node : nodesVector) {
         delete node;
