@@ -109,24 +109,27 @@ constexpr char ROLLING_ROCK = 'O';
 constexpr char CUBE_ROCK = '#';
 constexpr char EMPTY = '.';
 
+void copyMapExceptRollingRocks(const std::vector<std::vector<char> > & initialMap, std::vector<std::vector<char> > & mapCopy) {
+    assert(!initialMap.empty());
+    // Copy the map as if there were no rolling rocks on it.
+    for (const auto & initialMapLine : initialMap) {
+        std::vector<char> mapCopyLine;
+        for (auto & c : initialMapLine) {
+            if (c == CUBE_ROCK) {
+                mapCopyLine.push_back(CUBE_ROCK);
+            } else {
+                mapCopyLine.push_back(EMPTY);  // we ignore the rolling rocks for now. re-add them later
+            }
+        }
+        mapCopy.push_back(mapCopyLine);
+    }
+}
 
 void moveRollingRocksNorthwards(const std::vector<std::vector<char> > & initialMap, std::vector<std::vector<char> > & _movedMap) {
     assert(!initialMap.empty());
-
+    
     std::vector<std::vector<char> > movedMap;
-    // Copy the map as if there were no rolling rocks on it.
-    for (const auto & initialMapLine : initialMap) {
-        std::vector<char> movedMapLine;
-        for (auto & c : initialMapLine) {
-            if (c == CUBE_ROCK) {
-                movedMapLine.push_back(CUBE_ROCK);
-            } else {
-                movedMapLine.push_back(EMPTY);  // we ignore the rolling rocks for now. re-add them later
-            }
-        }
-        movedMap.push_back(movedMapLine);
-    }
-
+    copyMapExceptRollingRocks(initialMap, movedMap);
     assert(movedMap.size() == initialMap.size());
     assert(movedMap[0].size() == initialMap[0].size());
 
@@ -143,7 +146,7 @@ void moveRollingRocksNorthwards(const std::vector<std::vector<char> > & initialM
                 // do nothing
             } else if (readCharacter == CUBE_ROCK) {
                 for (unsigned int i=0; i < rockCount; i++) {
-                    movedMap[rC.y+i+1][rC.x] = ROLLING_ROCK;    //+1 to start before the CUBE_ROCK
+                    movedMap[rC.y+(i+1)][rC.x] = ROLLING_ROCK;    //+1 to start before the CUBE_ROCK
                 }
                 rockCount = 0;
             }
@@ -151,6 +154,111 @@ void moveRollingRocksNorthwards(const std::vector<std::vector<char> > & initialM
         // Make sure the rolling rocks don't roll off the edge.
         for (unsigned int i=0; i < rockCount; i++) {
             movedMap[0+i][x] = ROLLING_ROCK;
+        }
+    }
+
+    std::swap(movedMap, _movedMap);
+}
+
+void moveRollingRocksSouthwards(const std::vector<std::vector<char> > & initialMap, std::vector<std::vector<char> > & _movedMap) {
+    assert(!initialMap.empty());
+    
+    std::vector<std::vector<char> > movedMap;
+    copyMapExceptRollingRocks(initialMap, movedMap);
+    assert(movedMap.size() == initialMap.size());
+    assert(movedMap[0].size() == initialMap[0].size());
+
+    // Copy the rolling rocks as if they moved upwards
+    for (size_t x=0; x < initialMap[0].size(); x++) {
+        unsigned int rockCount = 0;
+        for (size_t y=0; y < initialMap.size(); y++) {
+            // calculate read coordinates
+            TCoordinates<size_t> rC{x, y};  //-1 to convert to indices.     [rC]: Read Coordinates
+            const char & readCharacter = initialMap[rC.y][rC.x];
+            if (readCharacter == ROLLING_ROCK) {
+                rockCount++;
+            // } else if(readCharacter == EMPTY) {
+                // do nothing
+            } else if (readCharacter == CUBE_ROCK) {
+                for (unsigned int i=0; i < rockCount; i++) {
+                    movedMap[rC.y-(i+1)][rC.x] = ROLLING_ROCK;    //+1 to start before the CUBE_ROCK
+                }
+                rockCount = 0;
+            }
+        }
+        // Make sure the rolling rocks don't roll off the edge.
+        for (unsigned int i=0; i < rockCount; i++) {
+            movedMap[initialMap.size()-1-i][x] = ROLLING_ROCK; //-1 to convert initialMap.size() to indices
+        }
+    }
+
+    std::swap(movedMap, _movedMap);
+}
+
+void moveRollingRocksEastwards(const std::vector<std::vector<char> > & initialMap, std::vector<std::vector<char> > & _movedMap) {
+    assert(!initialMap.empty());
+    
+    std::vector<std::vector<char> > movedMap;
+    copyMapExceptRollingRocks(initialMap, movedMap);
+    assert(movedMap.size() == initialMap.size());
+    assert(movedMap[0].size() == initialMap[0].size());
+
+    // Copy the rolling rocks as if they moved upwards
+    for (size_t y=0; y < initialMap.size(); y++) {
+        unsigned int rockCount = 0;
+        for (size_t x=0; x < initialMap[0].size(); x++) {
+            // calculate read coordinates
+            TCoordinates<size_t> rC{x, y};  //-1 to convert to indices.     [rC]: Read Coordinates
+            const char & readCharacter = initialMap[rC.y][rC.x];
+            if (readCharacter == ROLLING_ROCK) {
+                rockCount++;
+            // } else if(readCharacter == EMPTY) {
+                // do nothing
+            } else if (readCharacter == CUBE_ROCK) {
+                for (unsigned int i=0; i < rockCount; i++) {
+                    movedMap[rC.y][rC.x-(i+1)] = ROLLING_ROCK;    //+1 to start before the CUBE_ROCK
+                }
+                rockCount = 0;
+            }
+        }
+        // Make sure the rolling rocks don't roll off the edge.
+        for (unsigned int i=0; i < rockCount; i++) {
+            movedMap[y][initialMap[0].size()-(1+i)] = ROLLING_ROCK;      //-1 to convert initialMap.size() to indices
+        }
+    }
+
+    std::swap(movedMap, _movedMap);
+}
+
+void moveRollingRocksWestwards(const std::vector<std::vector<char> > & initialMap, std::vector<std::vector<char> > & _movedMap) {
+    assert(!initialMap.empty());
+    
+    std::vector<std::vector<char> > movedMap;
+    copyMapExceptRollingRocks(initialMap, movedMap);
+    assert(movedMap.size() == initialMap.size());
+    assert(movedMap[0].size() == initialMap[0].size());
+
+    // Copy the rolling rocks as if they moved upwards
+    for (size_t y=0; y < initialMap.size(); y++) {
+        unsigned int rockCount = 0;
+        for (size_t x=0; x < initialMap[0].size(); x++) {
+            // calculate read coordinates
+            TCoordinates<size_t> rC{initialMap[0].size()-(1+x), y};  //-1 to convert to indices.     [rC]: Read Coordinates
+            const char & readCharacter = initialMap[rC.y][rC.x];
+            if (readCharacter == ROLLING_ROCK) {
+                rockCount++;
+            // } else if(readCharacter == EMPTY) {
+                // do nothing
+            } else if (readCharacter == CUBE_ROCK) {
+                for (unsigned int i=0; i < rockCount; i++) {
+                    movedMap[rC.y][rC.x+(i+1)] = ROLLING_ROCK;    //+1 to start before the CUBE_ROCK
+                }
+                rockCount = 0;
+            }
+        }
+        // Make sure the rolling rocks don't roll off the edge.
+        for (unsigned int i=0; i < rockCount; i++) {
+            movedMap[y][0+i] = ROLLING_ROCK;
         }
     }
 
@@ -193,9 +301,79 @@ puzzleValueType solve1(T & stream) {
     return puzzleValue;
 }
 
-const std::string givenTestData_problem2 = "";
+// --- Part Two ---
+// The parabolic reflector dish deforms, but not in a way that focuses the beam.
+// To do that, you'll need to move the rocks to the edges of the platform.
+// Fortunately, a button on the side of the control panel labeled "spin cycle" attempts to do just that!
 
-constexpr puzzleValueType expectedSolution_problem2 = -1;
+// Each cycle tilts the platform four times so that the rounded rocks roll north, then west, then south, then east.
+// After each tilt, the rounded rocks roll as far as they can before the platform tilts in the next direction.
+// After one cycle, the platform will have finished rolling the rounded rocks in those four directions in that order.
+
+// Here's what happens in the example above after each of the first few cycles:
+
+// After 1 cycle:
+// .....#....
+// ....#...O#
+// ...OO##...
+// .OO#......
+// .....OOO#.
+// .O#...O#.#
+// ....O#....
+// ......OOOO
+// #...O###..
+// #..OO#....
+
+// After 2 cycles:
+// .....#....
+// ....#...O#
+// .....##...
+// ..O#......
+// .....OOO#.
+// .O#...O#.#
+// ....O#...O
+// .......OOO
+// #..OO###..
+// #.OOO#...O
+
+// After 3 cycles:
+// .....#....
+// ....#...O#
+// .....##...
+// ..O#......
+// .....OOO#.
+// .O#...O#.#
+// ....O#...O
+// .......OOO
+// #...O###.O
+// #.OOO#...O
+
+// This process should work if you leave it running long enough,
+//  but you're still worried about the north support beams.
+// To make sure they'll survive for a while, you need to calculate the total load on the north support beams after 1000000000 cycles.
+
+// In the above example, after 1000000000 cycles, the total load on the north support beams is 64.
+
+// Run the spin cycle for 1000000000 cycles.
+// Afterward, what is the total load on the north support beams?
+
+// Although it hasn't changed, you can still get your puzzle input.
+
+const std::string givenTestData_problem2 = "\
+.....#....\n\
+....#...O#\n\
+...OO##...\n\
+.OO#......\n\
+.....OOO#.\n\
+.O#...O#.#\n\
+....O#....\n\
+......OOOO\n\
+#...O###..\n\
+#..OO#....\n";
+
+constexpr puzzleValueType expectedSolution_problem2 = 64;
+
+constexpr unsigned long int CYCLES = 1000000000;
 
 template<typename T>
 puzzleValueType solve2(T & stream) {
@@ -205,7 +383,45 @@ puzzleValueType solve2(T & stream) {
         lines.push_back(line);
     }
 
+    // convert to map
+    std::vector<std::vector<char> > map;
+    {
+        bool equalLinesInMap = VectorUtils::convertToMap(lines, map);
+        assert(equalLinesInMap);
+    }
+
+    // move all roling rocks upwards
+    CoutUtils::print2d("initialMap", map);
+    std::cout << std::endl;
+    unsigned long int printCounter = 0;
+    for (unsigned long int cycle = 0; cycle < CYCLES; cycle++) {
+        if (printCounter == 1000) {
+            printCounter = 0;
+            PRINT(cycle);
+        }
+        printCounter++;
+        //north ^
+        moveRollingRocksNorthwards(map, map);
+        //west <-
+        moveRollingRocksWestwards(map, map);
+        //south \/
+        moveRollingRocksSouthwards(map, map);
+        // east ->
+        moveRollingRocksEastwards(map, map);
+    }
+    CoutUtils::print2d("movedMap", map);
+
+    // Count puzzle value
     puzzleValueType puzzleValue = 0;
+    for (size_t x=0; x < map[0].size(); x++) {
+        for (size_t y=0; y < map.size(); y++) {
+            TCoordinates<size_t> rC{x, map.size()-y-1};  //-1 to convert to indices.     [rC]: Read Coordinates
+            const char & readCharacter = map[rC.y][rC.x];
+            if (readCharacter == ROLLING_ROCK) {
+                puzzleValue += map.size()-rC.y;    // higher is more weight; so the weight increases in the opposing direction as the (rC.)y index.
+            }
+        }
+    }
 
     return puzzleValue;
 }
