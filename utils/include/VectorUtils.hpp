@@ -5,6 +5,26 @@
 
 namespace VectorUtils {
 
+    bool convertToMap(const std::vector<std::string> & lines, std::vector<std::vector<char> > & map) {
+        if (lines.empty()) {
+            return true;
+        }
+        bool equalLines = true;
+        const std::string & firstLine = lines[0];
+        for (const std::string & line : lines) {
+            std::vector<char> mapLine;
+            if (line.size() != firstLine.size()) {
+                equalLines = false;
+            }
+            for (const char & c : line) {
+                mapLine.push_back(c);
+            }
+            map.push_back(mapLine);
+        }
+
+        return equalLines;
+    }
+
     template<typename T>
     std::vector<T> concatenate(const std::vector<T> & lhs, const std::vector<T> & rhs) {
         std::vector<T> ret = lhs;
