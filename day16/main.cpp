@@ -397,9 +397,78 @@ puzzleValueType solve1(T & stream) {
     return puzzleValue;
 }
 
-const std::string givenTestData_problem2 = "";
+// --- Part Two ---
+// As you try to work out what might be wrong,
+//  the reindeer tugs on your shirt and leads you to a nearby control panel.
+// There, a collection of buttons lets you align the contraption so that the beam enters from any edge tile and heading away from that edge.
+// (You can choose either of two directions for the beam if it starts on a corner;
+//  for instance, if the beam starts in the bottom-right corner, it can start heading either left or upward.)
 
-constexpr puzzleValueType expectedSolution_problem2 = -1;
+// So, the beam could start on any tile in the top row (heading downward),
+//  any tile in the bottom row (heading upward), any tile in the leftmost column (heading right), or any tile in the rightmost column (heading left).
+// To produce lava, you need to find the configuration that energizes as many tiles as possible.
+
+// In the above example, this can be achieved by starting the beam in the fourth tile from the left in the top row:
+
+// .|<2<\....
+// |v-v\^....
+// .v.v.|->>>
+// .v.v.v^.|.
+// .v.v.v^...
+// .v.v.v^..\
+// .v.v/2\\..
+// <-2-/vv|..
+// .|<<<2-|.\
+// .v//.|.v..
+// Using this configuration, 51 tiles are energized:
+
+// .#####....
+// .#.#.#....
+// .#.#.#####
+// .#.#.##...
+// .#.#.##...
+// .#.#.##...
+// .#.#####..
+// ########..
+// .#######..
+// .#...#.#..
+
+// Find the initial beam configuration that energizes the largest number of tiles; how many tiles are energized in that configuration?
+
+// Although it hasn't changed, you can still get your puzzle input.
+
+const std::string & givenTestData_problem2 = givenTestData_problem1;
+
+constexpr puzzleValueType expectedSolution_problem2 = 51;
+
+puzzleValueType runAndCount(const Beam & beam, std::vector<std::vector<Space>> map) {
+    std::queue<Beam> beams;
+    beams.push(beam);
+
+    while (!beams.empty()) {
+        const Beam & beam = beams.front();
+        const auto & beamCoordinates = beam.getCoordinates();
+        if ((beamCoordinates.y >= 0 && beamCoordinates.y < map.size())
+            && (beamCoordinates.x >= 0 && beamCoordinates.x < map[0].size()))
+        {
+            Space & space = map[beamCoordinates.y][beamCoordinates.x];
+            space.beamEvent(beam, beams);
+        }
+        beams.pop();
+    }
+
+    // count energized spaces
+    puzzleValueType puzzleValue = 0;
+    for (const auto & spaceRow : map) {
+        for (const auto & space : spaceRow) {
+            if (space.isEnergized()) {
+                puzzleValue++;
+            }
+        }
+    }
+
+    return puzzleValue;
+}
 
 template<typename T>
 puzzleValueType solve2(T & stream) {
@@ -409,7 +478,39 @@ puzzleValueType solve2(T & stream) {
         lines.push_back(line);
     }
 
+    //convert lines into items
+    std::vector<std::vector<Space>> map;
+    {
+        int y=0;
+        for (const auto & line : lines) {
+            int x=0;
+            std::vector<Space> spacesLine;
+            for (const char & c : line) {
+                spacesLine.push_back(Space({x,y}, c));
+                x++;
+            }
+            map.push_back(spacesLine);
+            y++;
+        }
+    }
+
+    for (const auto & spaceRow : map) {
+        for (const auto & space : spaceRow) {
+            std::cout << space.getCharacter();
+        }
+        std::cout << std::endl;
+    }
+
+    // play out beam scenario
     puzzleValueType puzzleValue = 0;
+    for (unsigned int y=0; y < map.size(); y++) {
+        puzzleValue = std::max(puzzleValue, runAndCount(Beam(ICoordinates{0,static_cast<int>(y)}, direction_e::e_east), map));
+        puzzleValue = std::max(puzzleValue, runAndCount(Beam(ICoordinates{static_cast<int>(map[0].size()-1),static_cast<int>(y)}, direction_e::e_west), map));
+    }
+    for (unsigned int x=0; x < map[0].size(); x++) {
+        puzzleValue = std::max(puzzleValue, runAndCount(Beam(ICoordinates{static_cast<int>(x),0}, direction_e::e_south), map));
+        puzzleValue = std::max(puzzleValue, runAndCount(Beam(ICoordinates{static_cast<int>(x),static_cast<int>(map.size()-1)}, direction_e::e_north), map));
+    }
 
     return puzzleValue;
 }
