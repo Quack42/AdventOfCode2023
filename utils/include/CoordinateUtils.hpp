@@ -1,5 +1,12 @@
 #pragma once
 
+enum direction_e {
+    e_north,
+    e_east,
+    e_south,
+    e_west
+};
+
 namespace CoordinateUtils {
     template<typename T>
     struct TCoordinates {
@@ -49,3 +56,12 @@ namespace CoordinateUtils {
 
 template<typename T>
 using TCoordinates = CoordinateUtils::TCoordinates<T>;
+
+using ICoordinates = TCoordinates<int>;
+
+namespace CoordinateUtils {
+    constexpr ICoordinates NORTH{0,-1};
+    constexpr ICoordinates EAST{1,0};
+    constexpr ICoordinates SOUTH{0,1};
+    constexpr ICoordinates WEST{-1,0};
+}
